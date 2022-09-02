@@ -120,12 +120,28 @@ void scroll(GLFWwindow* window, double xoffset, double yoffset)
     // emulate vertical mouse motion = 5% of window height
     mjv_moveCamera(m, mjMOUSE_ZOOM, 0, -0.05 * yoffset, &scn, &cam);
 }
+void mycontroller(const mjModel* m, mjData* d)
+{
+    mjtNum q_bar = 0.9;
+    mjtNum Kq = 1;
+    mjtNum Kqdot = 0.1;
+    mjtNum dq = q_bar - d->qpos[0];
+    //std::cout << "dq: " << dq << std::endl;
 
+    if (dq > 0)
+    {
+        d->ctrl[0] = Kq * dq - Kqdot * d->qvel[0];
+        //std::cout << "d->ctrl[0]: " << d->ctrl[0] << std::endl;
+    }
+    else
+    {
+        d->ctrl[1] = -Kq * dq + Kqdot * d->qvel[0];
+    }
+}
 int main(void)
 {
     // load model from file and check for errors
-    //m = mj_loadXML("C:\\Users\\10517\\Desktop\\mujoco-yitong\\model\\hello.xml", NULL, error, 1000);
-    m = mj_loadXML("tendon.xml", NULL, error, 1000);
+    m = mj_loadXML("pendulum_muscle.xml", NULL, error, 1000);
     if (!m)
     {
         printf("%s\n", error);
@@ -159,7 +175,8 @@ int main(void)
     glfwSetCursorPosCallback(window, mouse_move);
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetScrollCallback(window, scroll);
-
+    
+    mjcb_control = mycontroller;
     // run main loop, target real-time simulation and 60 fps rendering
     mj_forward(m, d);
     while (!glfwWindowShouldClose(window)) {
