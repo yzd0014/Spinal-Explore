@@ -46,9 +46,11 @@ mjData* d = nullptr;
 mjtNum* ctrlnoise = nullptr;
 
 mjtNum recover_dt = 5;
-mjtNum event_time = 10;
+mjtNum event_time = 0;
 void EventController(const mjModel* m, mjData* d)
 {
+    //std::cout << "time: " << d->time << std::endl;
+    //std::cout << "angle: " << d->qpos[0] << std::endl;
     if (d->qpos[0] > 0.4 && d->time - event_time >= recover_dt)
     {
         event_time = d->time;
@@ -255,6 +257,7 @@ void PhysicsThread(mj::Simulate* sim, const char* filename) {
       ctrlnoise = static_cast<mjtNum*>(malloc(sizeof(mjtNum)*m->nu));
       mju_zero(ctrlnoise, m->nu);
     }
+    mjcb_control = EventController;
   }
 
   PhysicsLoop(*sim);
@@ -286,7 +289,6 @@ int main(int argc, const char** argv) {
   const char* filename = nullptr;
   if (argc >  1) {
     filename = argv[1];
-    mjcb_control = EventController;
   }
 
   // start physics thread
