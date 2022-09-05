@@ -12,7 +12,6 @@
 #include "simulate.h"
 #include "array_safety.h"
 //#include <Eigen/Eigen>
-
 //using namespace Eigen;
 
 char error[1000];
@@ -138,6 +137,25 @@ void mycontroller(const mjModel* m, mjData* d)
         d->ctrl[1] = -Kq * dq + Kqdot * d->qvel[0];
     }
 }
+
+void LengthController(const mjModel* m, mjData* d)
+{
+    mjtNum l_bar = 0.615;//0.41 to 0.79, center length: 0.62
+    mjtNum Kp = 1;
+    mjtNum Kd = 0.1;
+    mjtNum dl = 0;
+
+    dl = d->ten_length[0] - l_bar;
+    //std::cout << d->ten_length[0] << std::endl;
+    if (dl > 0)
+    {
+        d->ctrl[0] = Kp * dl - Kd * d->qvel[0];
+    }
+    else
+    {
+        d->ctrl[1] = -(Kp * dl - Kd * d->qvel[0]);
+    }
+}
 int main(void)
 {
     // load model from file and check for errors
@@ -176,7 +194,8 @@ int main(void)
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetScrollCallback(window, scroll);
     
-    mjcb_control = mycontroller;
+    //mjcb_control = mycontroller;
+    mjcb_control = LengthController;
     // run main loop, target real-time simulation and 60 fps rendering
     mj_forward(m, d);
     while (!glfwWindowShouldClose(window)) {

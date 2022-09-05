@@ -45,8 +45,16 @@ mjData* d = nullptr;
 // control noise variables
 mjtNum* ctrlnoise = nullptr;
 
-
-
+mjtNum recover_dt = 5;
+mjtNum event_time = 10;
+void EventController(const mjModel* m, mjData* d)
+{
+    if (d->qpos[0] > 0.4 && d->time - event_time >= recover_dt)
+    {
+        event_time = d->time;
+        std::cout << "Event Triggered: " << d->time << std::endl;
+    }
+}
 //------------------------------------------- simulation -------------------------------------------
 
 
@@ -278,6 +286,7 @@ int main(int argc, const char** argv) {
   const char* filename = nullptr;
   if (argc >  1) {
     filename = argv[1];
+    mjcb_control = EventController;
   }
 
   // start physics thread

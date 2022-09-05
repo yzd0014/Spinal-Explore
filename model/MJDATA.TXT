@@ -12,41 +12,26 @@ SIZES
   nefc                  0
   ncon                  0
 
-TIMER
-    0:  duration =  0.066      number = 8
-    1:  duration =  0.063      number = 8
-    2:  duration =  0          number = 0
-    3:  duration =  0.04       number = 8
-    4:  duration =  0.0037     number = 8
-    5:  duration =  0.0027     number = 8
-    6:  duration =  0.0098     number = 8
-    7:  duration =  0          number = 0
-    8:  duration =  0.017      number = 8
-    9:  duration =  0.003      number = 8
-    10:  duration =  0.0087     number = 8
-    11:  duration =  0.0033     number = 8
-    12:  duration =  0.0012     number = 8
-
 ENERGY =  0         0        
 
-TIME =  30      
+TIME =  47      
 
 QPOS
-   1.1      
+   0        
   
 QVEL
-  -4.4e-08  
+   0        
   
 ACT
-   0.38     
-   0.1      
+   0        
+   0        
   
 QACC_WARMSTART
-   1e-06    
+   0        
   
 CTRL
-   0.38     
-   0.1      
+   0        
+   0        
   
 QFRC_APPLIED
    0        
@@ -56,31 +41,31 @@ XFRC_APPLIED
    0         0         0         0         0         0        
   
 QACC
-   1e-06    
+   0        
   
 ACT_DOT
-  -1.3e-14  
-   2.1e-15  
+   0        
+   0        
   
 XPOS
    0         0         0        
-   0.45      0         1.8      
+   0         0         1.5      
   
 XQUAT
    1         0         0         0        
-   0.85      0        -0.52      0        
+   1         0         0         0        
   
 XMAT
    1         0         0         0         1         0         0         0         1        
-   0.45     -0        -0.89      0         1        -0         0.89      0         0.45     
+   1         0         0         0         1         0         0         0         1        
   
 XIPOS
    0         0         0        
-   0.45      0         1.8      
+   0         0         1.5      
   
 XIMAT
    1         0         0         0         1         0         0         0         1        
-   0.45     -0        -0.89      0         1        -0         0.89      0         0.45     
+   1         0         0         0         1         0         0         0         1        
   
 XANCHOR
    0         0         2        
@@ -90,23 +75,23 @@ XAXIS
   
 GEOM_XPOS
    0         0         0        
-   0.45      0         1.8      
+   0         0         1.5      
   
 GEOM_XMAT
    1         0         0         0         1         0         0         0         1        
-   0.45     -0        -0.89      0         1        -0         0.89      0         0.45     
+   1         0         0         0         1         0         0         0         1        
   
 SITE_XPOS
    0.2       0         2        
   -0.2       0         2        
-   0.56      0         1.8      
-   0.51      0         1.7      
+   0.06      0         1.4      
+  -0.06      0         1.4      
   
 SITE_XMAT
    1         0         0         0         1         0         0         0         1        
    1         0         0         0         1         0         0         0         1        
-   0.45     -0        -0.89      0         1        -0         0.89      0         0.45     
-   0.45     -0        -0.89      0         1        -0         0.89      0         0.45     
+   1         0         0         0         1         0         0         0         1        
+   1         0         0         0         1         0         0         0         1        
   
 LIGHT_XPOS
    0         0         3        
@@ -115,43 +100,43 @@ LIGHT_XDIR
    0         0        -1        
   
 SUBTREE_COM
-   0.45      0         1.8      
-   0.45      0         1.8      
+   0         0         1.5      
+   0         0         1.5      
   
 CDOF
-   0        -1         0         0.22      0         0.45     
+   0        -1         0         0.5       0         0        
   
 CINERT
    0         0         0         0         0         0         0         0         0         0        
-   0.018     0.084     0.067     0         0.033     0         0         0         0         1        
+   0.084     0.084     0.0013    0         0         0         0         0         0         1        
   
 TEN_LENGTH
-   0.42     
-   0.78     
+   0.62     
+   0.62     
   
 TEN_MOMENT
-  -0.1      
-   0.083    
+  -0.19     
+   0.19     
   
 TENDON 0: 2 wrap points
     -1:   0.2       0         2        
-    -1:   0.56      0         1.8      
+    -1:   0.06      0         1.4      
 
 TENDON 1: 2 wrap points
     -1:  -0.2       0         2        
-    -1:   0.51      0         1.7      
+    -1:  -0.06      0         1.4      
 
 ACTUATOR_LENGTH
-   0.42     
-   0.78     
+   0.62     
+   0.62     
   
 ACTUATOR_MOMENT
-  -0.1      
-   0.083    
+  -0.19     
+   0.19     
   
 CRB
    0         0         0         0         0         0         0         0         0         0        
-   0.018     0.084     0.067     0         0.033     0         0         0         0         1        
+   0.084     0.084     0.0013    0         0         0         0         0         0         1        
   
 QM
    0.33     
@@ -179,22 +164,22 @@ QLU
   
 CONTACT
 TEN_VELOCITY
-   4.7e-09  
-  -3.8e-09  
+   0        
+   0        
   
 ACTUATOR_VELOCITY
-   4.7e-09  
-  -3.8e-09  
+   0        
+   0        
   
 CVEL
    0         0         0         0         0         0        
-   0         4.6e-08   0        -1e-08     0        -2e-08    
+   0         0         0         0         0         0        
   
 CDOF_DOT
    0         0        -0         0         0         0        
   
 QFRC_BIAS
-   4.4      
+   0        
   
 QFRC_PASSIVE
    0        
@@ -208,17 +193,17 @@ SUBTREE_ANGMOM
    0         0         0        
   
 ACTUATOR_FORCE
-  -73       
-  -37       
+   0        
+   0        
   
 QFRC_ACTUATOR
-   4.4      
+   0        
   
 QFRC_SMOOTH
-   3.5e-07  
+   0        
   
 QACC_SMOOTH
-   1e-06    
+   0        
   
 QFRC_CONSTRAINT
    0        
