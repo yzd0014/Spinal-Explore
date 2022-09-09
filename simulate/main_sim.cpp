@@ -33,6 +33,52 @@ double lasty = 0;
 bool start_sim = false;
 bool next_step = false;
 unsigned int key_s_counter = 0;
+
+//event controller parameters
+mjtNum pre_q=0;
+mjtNum recover_dt = 1;
+mjtNum hold_dt = 0.5;//must be smaller than recover_dt
+mjtNum event_time = 0;
+mjtNum angle_threshold = 0;
+bool target_crossed = false;
+mjtNum u = 1;
+void EventController(const mjModel* m, mjData* d)
+{
+    mjtNum q_bar = 0.78;
+    mjtNum dq = q_bar - d->qpos[0];
+    if (abs(dq) > angle_threshold && d->time - event_time >= recover_dt)
+    {
+        //std::cout << "event: " << d->time << std::endl;
+        event_time = d->time;
+
+        if (dq > 0)
+        {
+            if (q_bar >= 0)
+            {
+                d->ctrl[1] += u * m->opt.timestep;
+                d->ctrl[2] = 0.1;
+            }
+            else
+            {
+                d->ctrl[1] = 0.1;
+                d->ctrl[2] -= u * m->opt.timestep;
+            }
+        }
+        else if (dq < 0)
+        {
+            if (q_bar <= 0)
+            {
+                d->ctrl[2] += u * m->opt.timestep;
+                d->ctrl[1] = 0.1;
+            }
+            else
+            {
+                d->ctrl[2] = 0.1;
+                d->ctrl[1] -= u * m->opt.timestep;
+            }
+        }
+    }
+}
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
 {
@@ -119,47 +165,66 @@ void scroll(GLFWwindow* window, double xoffset, double yoffset)
     // emulate vertical mouse motion = 5% of window height
     mjv_moveCamera(m, mjMOUSE_ZOOM, 0, -0.05 * yoffset, &scn, &cam);
 }
-void mycontroller(const mjModel* m, mjData* d)
+void AngleController(const mjModel* m, mjData* d)
 {
-    mjtNum q_bar = 0.9;
-    mjtNum Kq = 1;
-    mjtNum Kqdot = 0.1;
+    mjtNum q_bar = 0.78;
+    mjtNum Kq = 100;
+    mjtNum Kqdot = 5;
     mjtNum dq = q_bar - d->qpos[0];
-    //std::cout << "dq: " << dq << std::endl;
-
+    mjtNum u = 0;
     if (dq > 0)
     {
-        d->ctrl[0] = Kq * dq - Kqdot * d->qvel[0];
-        //std::cout << "d->ctrl[0]: " << d->ctrl[0] << std::endl;
+        u = Kq * dq - Kqdot * d->qvel[0];
+        if (u > 0)
+        {
+            d->ctrl[1] = u;
+        }
+        else
+        {
+            d->ctrl[2] = -u;
+        }
     }
     else
     {
-        d->ctrl[1] = -Kq * dq + Kqdot * d->qvel[0];
+        u = -Kq * dq + Kqdot * d->qvel[0];
+        if (u > 0)
+        {
+            d->ctrl[2] = u;
+        }
+        else
+        {
+            d->ctrl[1] = -u;
+        }
     }
+
+    d->ctrl[0] = sin(10 * d->time);
 }
 
 void LengthController(const mjModel* m, mjData* d)
 {
-    mjtNum l_bar = 0.615;//0.41 to 0.79, center length: 0.62
+    mjtNum l_bar = 0.515;//0.41 to 0.79, center length: 0.62
     mjtNum Kp = 1;
-    mjtNum Kd = 0.1;
+    mjtNum Kd = 0.5;
     mjtNum dl = 0;
 
     dl = d->ten_length[0] - l_bar;
     //std::cout << d->ten_length[0] << std::endl;
     if (dl > 0)
     {
-        d->ctrl[0] = Kp * dl - Kd * d->qvel[0];
+        d->ctrl[1] = Kp * dl - Kd * d->qvel[0];
     }
     else
     {
-        d->ctrl[1] = -(Kp * dl - Kd * d->qvel[0]);
+        d->ctrl[2] = -(Kp * dl - Kd * d->qvel[0]);
     }
+
+    //d->ctrl[0] = sin(10*d->time);
+    //std::cout << d->ctrl[0] << std::endl;
 }
 int main(void)
 {
     // load model from file and check for errors
-    m = mj_loadXML("pendulum_muscle.xml", NULL, error, 1000);
+    m = mj_loadXML("muscle_motor.xml", NULL, error, 1000);
     if (!m)
     {
         printf("%s\n", error);
@@ -193,11 +258,28 @@ int main(void)
     glfwSetCursorPosCallback(window, mouse_move);
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetScrollCallback(window, scroll);
-    
-    //mjcb_control = mycontroller;
-    mjcb_control = LengthController;
+   
     // run main loop, target real-time simulation and 60 fps rendering
     mj_forward(m, d);
+    int mode = 2;
+    if (mode == 0) {
+        mjcb_control = AngleController;
+    }
+    else if (mode == 1)
+    {
+        mjcb_control = LengthController;
+    }
+    else if (mode == 2)
+    {
+        mjcb_control = EventController;
+        
+        d->ctrl[1] = 0.1;
+        d->ctrl[2] = 0.1;
+        
+        event_time = -hold_dt;
+        pre_q = d->qpos[0];
+        angle_threshold = m->opt.timestep * u + 0.01;
+    }
     while (!glfwWindowShouldClose(window)) {
         if (start_sim||next_step)
         {

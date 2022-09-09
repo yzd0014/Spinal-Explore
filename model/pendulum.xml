@@ -12,7 +12,7 @@
 	</worldbody>
 	<actuator>
 		<motor joint="pin" name="torque" gear="1" ctrllimited="true" ctrlrange="-100 100" />
-		<position name="position_servo" joint="pin" kp="10" />
+		<position name="position_servo" joint="pin" kp="1" />
 		<velocity name="velocity_servo" joint="pin" kv="0" ctrlrange="-2 2" />
 	</actuator>
 	<sensor>
