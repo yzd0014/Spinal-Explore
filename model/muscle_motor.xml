@@ -27,7 +27,7 @@
        </spatial>
    </tendon>
    <actuator>
-        <position name="position" joint="joint0" kp="1"/>
+        <position name="position" joint="joint0" kp="0"/>
         <muscle  name="r-muscle" tendon="r-tendon"/>
         <muscle  name="l-muscle" tendon="l-tendon"/>
    </actuator>

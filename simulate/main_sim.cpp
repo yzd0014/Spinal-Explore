@@ -36,48 +36,43 @@ unsigned int key_s_counter = 0;
 
 //event controller parameters
 mjtNum pre_q=0;
-mjtNum recover_dt = 1;
-mjtNum hold_dt = 0.5;//must be smaller than recover_dt
+mjtNum recover_dt = 0.002;
+mjtNum hold_dt = 0.002;//must be smaller than recover_dt
 mjtNum event_time = 0;
 mjtNum angle_threshold = 0;
 bool target_crossed = false;
 mjtNum u = 1;
 void EventController(const mjModel* m, mjData* d)
-{
-    mjtNum q_bar = 0.78;
+{  
+    mjtNum q_bar = 0.35;
     mjtNum dq = q_bar - d->qpos[0];
-    if (abs(dq) > angle_threshold && d->time - event_time >= recover_dt)
+    if (d->time - event_time >= recover_dt)
     {
-        //std::cout << "event: " << d->time << std::endl;
-        event_time = d->time;
-
-        if (dq > 0)
+        if ((q_bar >= 0 && dq > 0) || (q_bar <= 0 && dq < 0))
         {
-            if (q_bar >= 0)
-            {
-                d->ctrl[1] += u * m->opt.timestep;
-                d->ctrl[2] = 0.1;
-            }
-            else
-            {
-                d->ctrl[1] = 0.1;
-                d->ctrl[2] -= u * m->opt.timestep;
-            }
-        }
-        else if (dq < 0)
-        {
-            if (q_bar <= 0)
-            {
-                d->ctrl[2] += u * m->opt.timestep;
-                d->ctrl[1] = 0.1;
-            }
-            else
-            {
-                d->ctrl[2] = 0.1;
-                d->ctrl[1] -= u * m->opt.timestep;
-            }
+            event_time = d->time;
         }
     }
+
+    if (d->time - event_time < hold_dt)
+    {
+        if (q_bar >= 0 && dq > 0)
+        {
+            d->ctrl[1] = u;
+            //std::cout << "time diff: " << d->time - event_time << std::endl;
+        }
+        else if (q_bar <= 0 && dq < 0)
+        {
+            d->ctrl[2] = u;
+        }
+    }
+    else
+    {
+        d->ctrl[1] = 0;
+        d->ctrl[2] = 0;
+    }
+    //std::cout << d->ctrl[1] << std::endl;
+    //d->ctrl[0] = sin(10 * d->time);
 }
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
@@ -175,6 +170,7 @@ void AngleController(const mjModel* m, mjData* d)
     if (dq > 0)
     {
         u = Kq * dq - Kqdot * d->qvel[0];
+        //std::cout << u << std::endl;
         if (u > 0)
         {
             d->ctrl[1] = u;
@@ -197,6 +193,10 @@ void AngleController(const mjModel* m, mjData* d)
         }
     }
 
+    d->ctrl[0] = sin(10 * d->time);
+}
+void NoiseGenerator(const mjModel* m, mjData* d)
+{
     d->ctrl[0] = sin(10 * d->time);
 }
 
@@ -245,8 +245,9 @@ int main(void)
     // initialize visualization data structures
     mjv_defaultCamera(&cam);
     //mjv_defaultPerturb(&pert);
+    mjv_defaultScene(&scn);
     mjv_defaultOption(&opt);
-    //mjr_defaultContext(&con);
+    mjr_defaultContext(&con);
 
     // create scene and context
     mjv_makeScene(m, &scn, 1000);
@@ -272,13 +273,15 @@ int main(void)
     else if (mode == 2)
     {
         mjcb_control = EventController;
-        
-        d->ctrl[1] = 0.1;
-        d->ctrl[2] = 0.1;
-        
-        event_time = -hold_dt;
-        pre_q = d->qpos[0];
-        angle_threshold = m->opt.timestep * u + 0.01;
+        d->ctrl[1] = 0;
+        d->ctrl[2] = 0;
+        event_time = -recover_dt;
+        //pre_q = d->qpos[0];
+        //angle_threshold = m->opt.timestep * u + 0.00001;
+    }
+    else if (mode == 3)
+    {
+        mjcb_control = NoiseGenerator;
     }
     while (!glfwWindowShouldClose(window)) {
         if (start_sim||next_step)
