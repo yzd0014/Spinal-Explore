@@ -27,7 +27,9 @@
        </spatial>
    </tendon>
    <actuator>
-        <muscle  name="r-muscle" tendon="r-tendon"/>
-        <muscle  name="l-muscle" tendon="l-tendon"/>
+        <muscle  name="r-muscle" tendon="r-tendon" range="0.75 1.25"/>
+        <muscle  name="l-muscle" tendon="l-tendon" range="0.75 1.25"/>
+        <!-- <muscle  name="r-muscle" tendon="r-tendon"/> -->
+        <!-- <muscle  name="l-muscle" tendon="l-tendon"/> -->
    </actuator>
 </mujoco>

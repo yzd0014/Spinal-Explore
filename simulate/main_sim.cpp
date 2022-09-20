@@ -6,6 +6,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <fstream>
 
 #include <mujoco/mujoco.h>
 #include <mujoco/mjxmacro.h>
@@ -34,17 +35,20 @@ bool start_sim = false;
 bool next_step = false;
 unsigned int key_s_counter = 0;
 
+//file
+std::fstream fs;
+
 //event controller parameters
 mjtNum pre_q=0;
-mjtNum recover_dt = 0.002;
+mjtNum recover_dt = 0.004;
 mjtNum hold_dt = 0.002;//must be smaller than recover_dt
 mjtNum event_time = 0;
 mjtNum angle_threshold = 0;
 bool target_crossed = false;
-mjtNum u = 1;
+mjtNum u = 0.4;
 void EventController(const mjModel* m, mjData* d)
 {  
-    mjtNum q_bar = 0.35;
+    mjtNum q_bar = 1.3;
     mjtNum dq = q_bar - d->qpos[0];
     if (d->time - event_time >= recover_dt)
     {
@@ -73,6 +77,7 @@ void EventController(const mjModel* m, mjData* d)
     }
     //std::cout << d->ctrl[1] << std::endl;
     //d->ctrl[0] = sin(10 * d->time);
+    fs << d->ctrl[1] << ", " << d->actuator_force[1] << "\n";
 }
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
@@ -222,7 +227,10 @@ void LengthController(const mjModel* m, mjData* d)
     //std::cout << d->ctrl[0] << std::endl;
 }
 int main(void)
-{
+{ 
+    //file
+    fs.open("plot_data.csv", std::ios::out | std::ios::app);
+
     // load model from file and check for errors
     m = mj_loadXML("muscle_motor.xml", NULL, error, 1000);
     if (!m)
@@ -318,5 +326,6 @@ int main(void)
 
     mj_deleteData(d);
     mj_deleteModel(m);
+    fs.close();
     return 0;
 }

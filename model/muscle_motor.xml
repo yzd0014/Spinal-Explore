@@ -28,7 +28,7 @@
    </tendon>
    <actuator>
         <position name="position" joint="joint0" kp="0"/>
-        <muscle  name="r-muscle" tendon="r-tendon"/>
-        <muscle  name="l-muscle" tendon="l-tendon"/>
+        <muscle  name="r-muscle" tendon="r-tendon" range="0.75 1.25"/>
+        <muscle  name="l-muscle" tendon="l-tendon" range="0.75 1.25"/>
    </actuator>
 </mujoco>
