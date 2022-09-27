@@ -1,6 +1,6 @@
 <mujoco>
     <option timestep="0.0001">
-		<flag gravity="enable"/>
+		<flag gravity="disable"/>
 	</option>
    <worldbody>
       <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
@@ -26,8 +26,9 @@
             <site site="s3"/>
        </spatial>
    </tendon>
-   <actuator>
-        <position name="position" joint="joint0" kp="0"/>
+   <actuator> 
+        <!-- <position name="position" joint="joint0" kp="0"/> -->
+        <motor name="motor" joint="joint0" ctrlrange="-100 100"/>
         <muscle  name="r-muscle" tendon="r-tendon" range="0.75 1.25"/>
         <muscle  name="l-muscle" tendon="l-tendon" range="0.75 1.25"/>
    </actuator>

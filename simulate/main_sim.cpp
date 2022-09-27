@@ -43,22 +43,57 @@ std::fstream fs;
 std::function<mjtNum(mjtNum)> threshold_func;
 mjtNum pre_q=0;
 mjtNum q_bar = 1.3;
-mjtNum refractory_dt = 0.07;//0.005;
+mjtNum refractory_dt = 0.007;//0.005;
 mjtNum hold_dt = 0.0001;//must be smaller than recover_dt
 mjtNum event_time = 0;
 mjtNum angle_threshold = 0;
 bool target_crossed = false;
 bool mlock = true;
 mjtNum u = 1;
+/***************************************************/
+mjtNum l_bar[2];
+mjtNum event_times[2];
+mjtNum m_counter = 0;
+void NoiseGenerator(const mjModel* m, mjData* d)
+{
+    //d->ctrl[0] = sin(10 * d->time);
+    d->ctrl[0] = 0;
+    if (mlock)
+    {
+        d->ctrl[0] = 100;
+        m_counter++;
+        if (m_counter == 20) mlock = false;
+    }
+}
+void EventLengthController(const mjModel* m, mjData* d)
+{
+    mjtNum dl[2];
+    for (int i = 0; i < 2; i++)
+    {
+        dl[i] = l_bar[i] - d->ten_length[i];
+        if (d->time - event_times[i] >= refractory_dt && dl[i] < 0)
+        {
+            event_times[i] = d->time;
+        }
+        d->ctrl[i+1] = 0;
+        if (d->time - event_times[i] < hold_dt && dl[i] < 0)
+        {
+            d->ctrl[i+1] = u;
+        }
+    }
+    //NoiseGenerator(m, d);
+    //std::cout << d->ten_length[0] << ", " << d->ten_length[1] << std::endl;
+    //std::cout << d->ctrl[1] << ", " << d->ctrl[2] << std::endl;
+}
 void EventController(const mjModel* m, mjData* d)
-{  
-    /*d->ctrl[1] = 0;
+{
+   /* d->ctrl[1] = 0;
     if (mlock)
     {
         d->ctrl[1] = u;
         mlock = false;
     }*/
-    
+
     mjtNum dq = q_bar - d->qpos[0];
     if (d->time - event_time >= refractory_dt)
     {
@@ -212,10 +247,6 @@ void AngleController(const mjModel* m, mjData* d)
 
     d->ctrl[0] = sin(10 * d->time);
 }
-void NoiseGenerator(const mjModel* m, mjData* d)
-{
-    d->ctrl[0] = sin(10 * d->time);
-}
 
 void LengthController(const mjModel* m, mjData* d)
 {
@@ -281,8 +312,8 @@ int main(void)
     glfwSetScrollCallback(window, scroll);
    
     // run main loop, target real-time simulation and 60 fps rendering
-    mj_forward(m, d);
-    int mode = 2;
+    
+    int mode = 3;
     if (mode == 0) {
         mjcb_control = AngleController;
     }
@@ -295,6 +326,7 @@ int main(void)
         mjcb_control = EventController;
         refractory_dt = -0.059 * q_bar + 0.0818;
         event_time = -refractory_dt;
+        hold_dt = m->opt.timestep;
         /*threshold_func = [](mjtNum dq)->mjtNum
         {
             mjtNum output;
@@ -313,8 +345,22 @@ int main(void)
     }
     else if (mode == 3)
     {
-        mjcb_control = NoiseGenerator;
+        mjcb_control = EventLengthController;
+        hold_dt = m->opt.timestep;
+
+        l_bar[0] = 0.62;//0.62
+        l_bar[1] = 0.62;//0.62
+        event_times[0] = -refractory_dt;
+        event_times[1] = -refractory_dt;
+
+        d->qpos[0] = 0.1;
     }
+    else
+    {
+        //mjcb_control = NoiseGenerator;
+        d->qpos[0] = 0.1;
+    }
+    mj_forward(m, d);
     while (!glfwWindowShouldClose(window)) {
         if (start_sim||next_step)
         {
