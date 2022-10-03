@@ -275,7 +275,7 @@ int main(void)
     fs.open("plot_data.csv", std::ios::out | std::ios::app);
 
     // load model from file and check for errors
-    m = mj_loadXML("muscle_motor.xml", NULL, error, 1000);
+    m = mj_loadXML("muscle_control.xml", NULL, error, 1000);
     if (!m)
     {
         printf("%s\n", error);
@@ -348,12 +348,12 @@ int main(void)
         mjcb_control = EventLengthController;
         hold_dt = m->opt.timestep;
 
-        l_bar[0] = 0.62;//0.62
-        l_bar[1] = 0.62;//0.62
+        l_bar[0] = 0.47;//0.62
+        l_bar[1] = 0.74;//0.62
         event_times[0] = -refractory_dt;
         event_times[1] = -refractory_dt;
 
-        d->qpos[0] = 0.1;
+        //d->qpos[0] = 0.1;
     }
     else
     {
