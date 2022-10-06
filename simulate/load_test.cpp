@@ -59,7 +59,7 @@ void EventLengthController(const mjModel* m, mjData* d)
         event_time = d->time;
         d->ctrl[1] = u;
     }
-    std::cout << d->actuator_force[1] << std::endl;
+    //std::cout << d->actuator_force[1] << std::endl;
     //if (d->ctrl[0] > -2.24)
     //{
     //    if (mCounter >= 1000)
