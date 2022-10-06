@@ -39,93 +39,46 @@ unsigned int key_s_counter = 0;
 //file
 std::fstream fs;
 
-//event controller parameters
-std::function<mjtNum(mjtNum)> threshold_func;
-mjtNum pre_q=0;
-mjtNum q_bar = 1.3;
-mjtNum refractory_dt = 0.007;//0.005;
-mjtNum hold_dt = 0.0001;//must be smaller than refractory_dt
+mjtNum refractory_dt = 0.004;//0.005;
 mjtNum event_time = 0;
-mjtNum angle_threshold = 0;
-bool target_crossed = false;
 bool mlock = true;
-mjtNum u = 1;
+int mCounter = 0;
+mjtNum u = 0.2;
 /***************************************************/
-mjtNum l_bar[2];
+mjtNum l_bar=0.6;
 mjtNum event_times[2];
-mjtNum m_counter = 0;
-void NoiseGenerator(const mjModel* m, mjData* d)
-{
-    //d->ctrl[0] = sin(10 * d->time);
-    d->ctrl[0] = 0;
-    if (mlock)
-    {
-        d->ctrl[0] = 100;
-        m_counter++;
-        if (m_counter == 20) mlock = false;
-    }
-}
+
 void EventLengthController(const mjModel* m, mjData* d)
 {
-    mjtNum dl[2];
-    for (int i = 0; i < 2; i++)
-    {
-        dl[i] = l_bar[i] - d->ten_length[i];
-        if (d->time - event_times[i] >= refractory_dt && dl[i] < 0)
-        {
-            event_times[i] = d->time;
-        }
-        d->ctrl[i+1] = 0;
-        if (d->time - event_times[i] < hold_dt && dl[i] < 0)
-        {
-            d->ctrl[i+1] = u;
-        }
-    }
-    //NoiseGenerator(m, d);
-    //std::cout << d->ten_length[0] << ", " << d->ten_length[1] << std::endl;
-    //std::cout << d->ctrl[1] << ", " << d->ctrl[2] << std::endl;
-}
-void EventController(const mjModel* m, mjData* d)
-{
-   /* d->ctrl[1] = 0;
-    if (mlock)
-    {
-        d->ctrl[1] = u;
-        mlock = false;
-    }*/
-
-    mjtNum dq = q_bar - d->qpos[0];
+    mjtNum dl = d->ten_length[0] - l_bar;
+    refractory_dt = -0.0038 * dl + 0.004;
+ 
+    d->ctrl[1] = 0;
     if (d->time - event_time >= refractory_dt)
     {
-        if ((q_bar >= 0 && dq > 0) || (q_bar <= 0 && dq < 0))
-        {
-            event_time = d->time;
-        }
+        event_time = d->time;
+        d->ctrl[1] = u;
     }
-
-    d->ctrl[1] = 0;
-    d->ctrl[2] = 0;
-    if (d->time - event_time < hold_dt)
-    {
-        //if (q_bar >= 0 && dq > 0 && d->qvel[0] < threshold_func(dq))
-        if (q_bar >= 0 && dq > 0)
-        {
-            d->ctrl[1] = u;
-            //std::cout << "time diff: " << d->time - event_time << std::endl;
-        }
-        //else if (q_bar <= 0 && dq < 0 && d->qvel[0] < threshold_func(-dq))
-        else if (q_bar <= 0 && dq < 0)
-        {
-            d->ctrl[2] = u;
-        }
-    }
-    
-    //std::cout << d->qpos[0] << std::endl;
-    //std::cout << d->qvel[0] << std::endl;
-    //std::cout << d->ctrl[1] << std::endl;
-    //d->ctrl[0] = sin(10 * d->time);
-    //fs << d->ctrl[1] << ", " << d->actuator_force[1] << "\n";
+    std::cout << d->actuator_force[1] << std::endl;
+    //if (d->ctrl[0] > -2.24)
+    //{
+    //    if (mCounter >= 1000)
+    //    {
+    //        d->ctrl[0] -= 0.01;
+    //        mCounter = 0;
+    //    }
+    //    else
+    //    {
+    //        mCounter++;
+    //    }
+    //    //std::cout << d->ten_length[0] << " " << -d->actuator_force[1] << std::endl;
+    //    //fs << d->ten_length[0] << ", " << -d->actuator_force[1] << "\n";
+    //}
+    //std::cout << d->actuator_force[1] << " " << d->qfrc_actuator[0] << std::endl;
+    //std::cout << d->xpos[5] << std::endl;
+    //std::cout << d->ctrl[0] <<" "<< d->act[0] << std::endl;
 }
+
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
 {
@@ -150,9 +103,9 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
         {
             key_s_counter = 4;
             next_step = true;
-        }     
+        }
         if (act == GLFW_RELEASE)
-        { 
+        {
             key_s_counter = 0;
         }
     }
@@ -205,77 +158,21 @@ void mouse_move(GLFWwindow* window, double xpos, double ypos)
     mjv_moveCamera(m, action, dx / height, dy / height, &scn, &cam);
 }
 
-
 // scroll callback
 void scroll(GLFWwindow* window, double xoffset, double yoffset)
 {
     // emulate vertical mouse motion = 5% of window height
     mjv_moveCamera(m, mjMOUSE_ZOOM, 0, -0.05 * yoffset, &scn, &cam);
 }
-void AngleController(const mjModel* m, mjData* d)
-{
-    mjtNum q_bar = 0.78;
-    mjtNum Kq = 100;
-    mjtNum Kqdot = 5;
-    mjtNum dq = q_bar - d->qpos[0];
-    mjtNum u = 0;
-    if (dq > 0)
-    {
-        u = Kq * dq - Kqdot * d->qvel[0];
-        //std::cout << u << std::endl;
-        if (u > 0)
-        {
-            d->ctrl[1] = u;
-        }
-        else
-        {
-            d->ctrl[2] = -u;
-        }
-    }
-    else
-    {
-        u = -Kq * dq + Kqdot * d->qvel[0];
-        if (u > 0)
-        {
-            d->ctrl[2] = u;
-        }
-        else
-        {
-            d->ctrl[1] = -u;
-        }
-    }
 
-    d->ctrl[0] = sin(10 * d->time);
-}
-
-void LengthController(const mjModel* m, mjData* d)
-{
-    mjtNum l_bar = 0.515;//0.41 to 0.79, center length: 0.62
-    mjtNum Kp = 1;
-    mjtNum Kd = 0.5;
-    mjtNum dl = 0;
-
-    dl = d->ten_length[0] - l_bar;
-    //std::cout << d->ten_length[0] << std::endl;
-    if (dl > 0)
-    {
-        d->ctrl[1] = Kp * dl - Kd * d->qvel[0];
-    }
-    else
-    {
-        d->ctrl[2] = -(Kp * dl - Kd * d->qvel[0]);
-    }
-
-    //d->ctrl[0] = sin(10*d->time);
-    //std::cout << d->ctrl[0] << std::endl;
-}
 int main(void)
-{ 
+{
     //file
-    fs.open("plot_data.csv", std::ios::out | std::ios::app);
+    fs.open("plot_data_0.6.csv", std::ios::out | std::ios::app);
 
     // load model from file and check for errors
-    m = mj_loadXML("muscle_control.xml", NULL, error, 1000);
+    //m = mj_loadXML("load_test.xml", NULL, error, 1000);
+    m = mj_loadXML("load_damping.xml", NULL, error, 1000);
     if (!m)
     {
         printf("%s\n", error);
@@ -310,59 +207,17 @@ int main(void)
     glfwSetCursorPosCallback(window, mouse_move);
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetScrollCallback(window, scroll);
-     
-    int mode = 3;
-    if (mode == 0) {
-        mjcb_control = AngleController;
-    }
-    else if (mode == 1)
-    {
-        mjcb_control = LengthController;
-    }
-    else if (mode == 2)
-    {
-        mjcb_control = EventController;
-        refractory_dt = -0.059 * q_bar + 0.0818;
-        event_time = -refractory_dt;
-        hold_dt = m->opt.timestep;
-        /*threshold_func = [](mjtNum dq)->mjtNum
-        {
-            mjtNum output;
-            if (dq < 0.2)
-            {
-                output = 0;
-            }
-            else
-            {
-                output = 2.6;
-            }
-            return output;
-        };*/
-        //pre_q = d->qpos[0];
-        //angle_threshold = m->opt.timestep * u + 0.00001;
-    }
-    else if (mode == 3)
+    
     {
         mjcb_control = EventLengthController;
-        hold_dt = m->opt.timestep;
-
-        l_bar[0] = 0.47;//0.62
-        l_bar[1] = 0.74;//0.62
-        event_times[0] = -refractory_dt;
-        event_times[1] = -refractory_dt;
-
-        //d->qpos[0] = 0.1;
-    }
-    else
-    {
-        //mjcb_control = NoiseGenerator;
-        d->qpos[0] = 0.1;
+        //d->ctrl[0] = -1.04;
+        d->ctrl[0] = -0.17;
     }
     mj_forward(m, d);
-    
+
     // run main loop, target real-time simulation and 60 fps rendering
     while (!glfwWindowShouldClose(window)) {
-        if (start_sim||next_step)
+        if (start_sim || next_step)
         {
             // advance interactive simulation for 1/60 sec
             //  Assuming MuJoCo can simulate faster than real-time, which it usually can,
@@ -371,7 +226,7 @@ int main(void)
             mjtNum simstart = d->time;
             while (d->time - simstart < 1.0 / 60.0)
                 mj_step(m, d);
-            
+
             next_step = false;
         }
         // get framebuffer viewport

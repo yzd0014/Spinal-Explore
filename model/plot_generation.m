@@ -1,12 +1,8 @@
 clear;
-M=csvread('plot_data.csv');
-sz=size(M);
-dt=0.002;
-t=zeros(sz(1),1);
-for i=1:sz(1)
-    t(i,1)=i*dt;
-end
-subplot(1,2,1);
-plot(t,M(:,1));
-subplot(1,2,2);
-plot(t,-M(:,2));
+M1=csvread('plot_data_0.2.csv');
+M2=csvread('plot_data_0.6.csv');
+
+% subplot(1,2,1);
+plot(M1(:,1),M1(:,2),M2(:,1),M2(:,2));
+% subplot(1,2,2);
+% plot(M2(:,1),M2(:,2));
