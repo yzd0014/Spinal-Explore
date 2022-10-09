@@ -45,17 +45,10 @@ mjData* d = nullptr;
 // control noise variables
 mjtNum* ctrlnoise = nullptr;
 
-mjtNum recover_dt = 5;
-mjtNum event_time = 0;
 void EventController(const mjModel* m, mjData* d)
 {
-    //std::cout << "time: " << d->time << std::endl;
-    //std::cout << "angle: " << d->qpos[0] << std::endl;
-    if (d->qpos[0] > 0.4 && d->time - event_time >= recover_dt)
-    {
-        event_time = d->time;
-        std::cout << "Event Triggered: " << d->time << std::endl;
-    }
+    std::cout << d->actuator_force[0] << ", " << d->actuator_moment[0] << ", " << d->actuator_force[0] * d->actuator_moment[0] << std::endl;
+    std::cout << d->actuator_force[1] << ", " << d->actuator_moment[1] << ", " << d->actuator_force[1] * d->actuator_moment[1] << std::endl << std::endl;
 }
 //------------------------------------------- simulation -------------------------------------------
 

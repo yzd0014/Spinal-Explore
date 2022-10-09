@@ -24,7 +24,7 @@
     </tendon>
     
     <actuator>
-        <muscle name="mMuscle" tendon="mTendon" lengthrange="0 2"/>
+        <muscle name="mMuscle" tendon="mTendon" lengthrange="0 2" ctrlrange="-2 2"/>
         <!-- <position name="mPos" joint="mSlide" kp="50" /> -->
     </actuator>
 </mujoco>
