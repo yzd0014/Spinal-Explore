@@ -47,8 +47,8 @@ mjtNum* ctrlnoise = nullptr;
 
 void EventController(const mjModel* m, mjData* d)
 {
-    std::cout << d->actuator_force[0] << ", " << d->actuator_moment[0] << ", " << d->actuator_force[0] * d->actuator_moment[0] << std::endl;
-    std::cout << d->actuator_force[1] << ", " << d->actuator_moment[1] << ", " << d->actuator_force[1] * d->actuator_moment[1] << std::endl << std::endl;
+    std::cout << d->actuator_force[1] << ", " << d->actuator_moment[1] << ", " << d->actuator_force[1] * d->actuator_moment[1] << std::endl;
+    std::cout << d->actuator_force[2] << ", " << d->actuator_moment[2] << ", " << d->actuator_force[2] * d->actuator_moment[2] << std::endl << std::endl;
 }
 //------------------------------------------- simulation -------------------------------------------
 

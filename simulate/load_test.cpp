@@ -32,17 +32,18 @@ bool button_right = false;
 double lastx = 0;
 double lasty = 0;
 
-bool start_sim = true;
+bool start_sim = false;
 bool next_step = false;
 unsigned int key_s_counter = 0;
 
 //file
 std::fstream fs;
+int visualization;
+bool mlock;
+int mCounter;
 
 mjtNum refractory_dt;
 mjtNum event_time;
-bool mlock;
-int mCounter;
 mjtNum u;
 mjtNum l_bar;
 mjtNum event_times[2];
@@ -58,11 +59,15 @@ void EventLengthController(const mjModel* m, mjData* d)
         event_time = d->time;
         d->ctrl[1] = u;
     }
-    mCounter++;
-    if (mCounter >= 10000)
+
+    if (visualization == 0)
     {
-        fs << d->ten_length[0] << ", " << -d->actuator_force[1] << "\n";
-        if (d->ten_length[0] >= 2.16) mlock = false;
+        mCounter++;
+        if (mCounter >= 10000)
+        {
+            fs << d->ten_length[0] << ", " << -d->actuator_force[1] << "\n";
+            if (d->ten_length[0] >= 2.16) mlock = false;
+        }
     }
     //std::cout << mCounter << ", " << - d->actuator_force[1] << std::endl;
     //std::cout << d->actuator_force[1] << " " << d->qfrc_actuator[0] << std::endl;
@@ -158,14 +163,11 @@ void scroll(GLFWwindow* window, double xoffset, double yoffset)
 
 int main(void)
 {
-    //file
+    visualization = 1;
     fs.open("plot_data_0.6.csv", std::ios::out | std::ios::app);
-    mlock = true;
-    mjtNum act0_ctrl = -0.02;
 
-    while (mlock)
+    if (visualization == 1)
     {
-        //mlock = false;
         //global varaible initialization
         event_time = 0;
         mCounter = 0;
@@ -212,8 +214,6 @@ int main(void)
 
         {
             mjcb_control = EventLengthController;
-            d->ctrl[0] = act0_ctrl;
-            act0_ctrl -= 0.02;
         }
         mj_forward(m, d);
 
@@ -230,11 +230,6 @@ int main(void)
                     mj_step(m, d);
 
                 next_step = false;
-            }
-            if (mCounter >= 10000)
-            {
-                glfwSetWindowShouldClose(window, 1);
-                mCounter = 0;
             }
             // get framebuffer viewport
             mjrRect viewport = { 0, 0, 0, 0 };
@@ -259,7 +254,48 @@ int main(void)
         mj_deleteData(d);
         mj_deleteModel(m);
     }
-  
+    else if (visualization == 0)
+    {
+        mlock = true;
+        mjtNum act0_ctrl = -0.02;
+        while (mlock)
+        {
+            //global varaible initialization
+            event_time = 0;
+            mCounter = 0;
+            u = 0.2;
+            l_bar = 0.6;
+
+            // load model from file and check for errors
+            //m = mj_loadXML("load_test.xml", NULL, error, 1000);
+            m = mj_loadXML("load_damping.xml", NULL, error, 1000);
+            if (!m)
+            {
+                printf("%s\n", error);
+                return 1;
+            }
+
+            // make data corresponding to model
+            d = mj_makeData(m);
+            {
+                mjcb_control = EventLengthController;
+                d->ctrl[0] = act0_ctrl;
+                act0_ctrl -= 0.02;
+            }
+            mj_forward(m, d);
+
+            while (mCounter < 10000)
+            {
+                mj_step(m, d);
+            }
+            mj_deleteData(d);
+            mj_deleteModel(m);
+        }
+    }
+    else
+    {
+        std::cout << "please select correct visualization mode to run!" << std::endl;
+    }
     fs.close();
     return 0;
 }

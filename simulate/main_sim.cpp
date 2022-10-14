@@ -36,24 +36,22 @@ bool start_sim = false;
 bool next_step = false;
 unsigned int key_s_counter = 0;
 
-//file
 std::fstream fs;
+int visualization;
+bool mlock = true;
+int mCounter = 0;
 
 //event controller parameters
 std::function<mjtNum(mjtNum)> threshold_func;
 mjtNum pre_q=0;
 mjtNum q_bar = 1.3;
-mjtNum refractory_dt = 0.007;//0.005;
+mjtNum refractory_dt[2];//0.005;
 mjtNum hold_dt = 0.0001;//must be smaller than refractory_dt
-mjtNum event_time = 0;
 mjtNum angle_threshold = 0;
 bool target_crossed = false;
-bool mlock = true;
 mjtNum u = 1;
-/***************************************************/
 mjtNum l_bar[2];
 mjtNum event_times[2];
-mjtNum m_counter = 0;
 void NoiseGenerator(const mjModel* m, mjData* d)
 {
     //d->ctrl[0] = sin(10 * d->time);
@@ -61,29 +59,50 @@ void NoiseGenerator(const mjModel* m, mjData* d)
     if (mlock)
     {
         d->ctrl[0] = 100;
-        m_counter++;
-        if (m_counter == 20) mlock = false;
+        mCounter++;
+        if (mCounter == 20) mlock = false;
     }
 }
 void EventLengthController(const mjModel* m, mjData* d)
 {
+    //mjtNum moment1 = d->actuator_moment[1];
+    //if (moment1 < 0) moment1 = -moment1;
+    //mjtNum moment2 = d->actuator_moment[2];
+    //if (moment2 < 0) moment2 = -moment2;
+    //
+    ////std::cout << d->actuator_moment[1] << ", " << d->actuator_moment[2] << std::endl;
+    //fs << d->qpos[0] << ", " << moment1 << ", " << moment2 << "\n";
+    //if (d->ctrl[0] < 1.4)
+    //{
+    //    d->ctrl[0] += 0.01;
+    //}
+    
     mjtNum dl[2];
     for (int i = 0; i < 2; i++)
     {
-        dl[i] = l_bar[i] - d->ten_length[i];
-        if (d->time - event_times[i] >= refractory_dt && dl[i] < 0)
+        dl[i] = d->ten_length[i] - l_bar[i];
+        if (dl[i] < 0)
+        {
+            dl[i] = 0;
+        }
+        else if (dl[i] > 0.4)
+        {
+            dl[i] = 0.4;
+        }
+        refractory_dt[i] = -0.1245 * dl[i] + 0.05;
+        
+        d->ctrl[i + 1] = 0;
+        if (d->time - event_times[i] >= refractory_dt[i])
         {
             event_times[i] = d->time;
-        }
-        d->ctrl[i+1] = 0;
-        if (d->time - event_times[i] < hold_dt && dl[i] < 0)
-        {
             d->ctrl[i+1] = u;
         }
     }
-    //NoiseGenerator(m, d);
-    //std::cout << d->ten_length[0] << ", " << d->ten_length[1] << std::endl;
-    //std::cout << d->ctrl[1] << ", " << d->ctrl[2] << std::endl;
+    /*mCounter++;
+    mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
+    mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
+    mjtNum netTorque = torque0 + torque1;
+    std::cout << mCounter << ", " << torque0 << ", " << torque1 << ", " << netTorque << "\n";*/
 }
 void EventController(const mjModel* m, mjData* d)
 {
@@ -95,17 +114,17 @@ void EventController(const mjModel* m, mjData* d)
     }*/
 
     mjtNum dq = q_bar - d->qpos[0];
-    if (d->time - event_time >= refractory_dt)
+    if (d->time - event_times[0] >= refractory_dt[0])
     {
         if ((q_bar >= 0 && dq > 0) || (q_bar <= 0 && dq < 0))
         {
-            event_time = d->time;
+            event_times[0] = d->time;
         }
     }
 
     d->ctrl[1] = 0;
     d->ctrl[2] = 0;
-    if (d->time - event_time < hold_dt)
+    if (d->time - event_times[0] < hold_dt)
     {
         //if (q_bar >= 0 && dq > 0 && d->qvel[0] < threshold_func(dq))
         if (q_bar >= 0 && dq > 0)
@@ -119,7 +138,6 @@ void EventController(const mjModel* m, mjData* d)
             d->ctrl[2] = u;
         }
     }
-    
     //std::cout << d->qpos[0] << std::endl;
     //std::cout << d->qvel[0] << std::endl;
     //std::cout << d->ctrl[1] << std::endl;
@@ -271,131 +289,174 @@ void LengthController(const mjModel* m, mjData* d)
 }
 int main(void)
 { 
-    //file
+    visualization = 0;
     fs.open("plot_data.csv", std::ios::out | std::ios::app);
-
-    // load model from file and check for errors
-    m = mj_loadXML("muscle_control.xml", NULL, error, 1000);
-    if (!m)
+    
+    if (visualization == 1)
     {
-        printf("%s\n", error);
-        return 1;
-    }
-
-    // make data corresponding to model
-    d = mj_makeData(m);
-
-    // init GLFW, create window, make OpenGL context current, request v-sync
-    // init GLFW
-    if (!glfwInit())
-        mju_error("Could not initialize GLFW");
-    GLFWwindow* window = glfwCreateWindow(1200, 900, "Demo", NULL, NULL);
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
-
-    // initialize visualization data structures
-    mjv_defaultCamera(&cam);
-    //mjv_defaultPerturb(&pert);
-    mjv_defaultScene(&scn);
-    mjv_defaultOption(&opt);
-    mjr_defaultContext(&con);
-
-    // create scene and context
-    mjv_makeScene(m, &scn, 1000);
-    mjr_makeContext(m, &con, mjFONTSCALE_100);
-
-    // ... install GLFW keyboard and mouse callbacks
-     // install GLFW mouse and keyboard callbacks
-    glfwSetKeyCallback(window, keyboard);
-    glfwSetCursorPosCallback(window, mouse_move);
-    glfwSetMouseButtonCallback(window, mouse_button);
-    glfwSetScrollCallback(window, scroll);
-     
-    int mode = 3;
-    if (mode == 0) {
-        mjcb_control = AngleController;
-    }
-    else if (mode == 1)
-    {
-        mjcb_control = LengthController;
-    }
-    else if (mode == 2)
-    {
-        mjcb_control = EventController;
-        refractory_dt = -0.059 * q_bar + 0.0818;
-        event_time = -refractory_dt;
-        hold_dt = m->opt.timestep;
-        /*threshold_func = [](mjtNum dq)->mjtNum
+        // load model from file and check for errors
+        m = mj_loadXML("muscle_control_narrow.xml", NULL, error, 1000);
+        if (!m)
         {
-            mjtNum output;
-            if (dq < 0.2)
+            printf("%s\n", error);
+            return 1;
+        }
+
+        // make data corresponding to model
+        d = mj_makeData(m);
+
+        // init GLFW, create window, make OpenGL context current, request v-sync
+        // init GLFW
+        if (!glfwInit())
+            mju_error("Could not initialize GLFW");
+        GLFWwindow* window = glfwCreateWindow(1200, 900, "Demo", NULL, NULL);
+        glfwMakeContextCurrent(window);
+        glfwSwapInterval(1);
+
+        // initialize visualization data structures
+        mjv_defaultCamera(&cam);
+        //mjv_defaultPerturb(&pert);
+        mjv_defaultScene(&scn);
+        mjv_defaultOption(&opt);
+        mjr_defaultContext(&con);
+
+        // create scene and context
+        mjv_makeScene(m, &scn, 1000);
+        mjr_makeContext(m, &con, mjFONTSCALE_100);
+
+        // ... install GLFW keyboard and mouse callbacks
+         // install GLFW mouse and keyboard callbacks
+        glfwSetKeyCallback(window, keyboard);
+        glfwSetCursorPosCallback(window, mouse_move);
+        glfwSetMouseButtonCallback(window, mouse_button);
+        glfwSetScrollCallback(window, scroll);
+
+        int mode = 3;
+        if (mode == 0) {
+            mjcb_control = AngleController;
+        }
+        else if (mode == 1)
+        {
+            mjcb_control = LengthController;
+        }
+        else if (mode == 2)
+        {
+            mjcb_control = EventController;
+        }
+        else if (mode == 3)
+        {
+            mjcb_control = EventLengthController;
+            event_times[0] = 0;
+            event_times[1] = 0;
+            mCounter = 0;
+            u = 1;
+            d->ctrl[0] = -1.41;
+            l_bar[0] = 0.2;
+            l_bar[1] = 0.4;
+        }
+        else
+        {
+            //mjcb_control = NoiseGenerator;
+            d->qpos[0] = 0.1;
+        }
+        mj_forward(m, d);
+
+        // run main loop, target real-time simulation and 60 fps rendering
+        while (!glfwWindowShouldClose(window)) {
+            if (start_sim || next_step)
             {
-                output = 0;
+                // advance interactive simulation for 1/60 sec
+                //  Assuming MuJoCo can simulate faster than real-time, which it usually can,
+                //  this loop will finish on time for the next frame to be rendered at 60 fps.
+                //  Otherwise add a cpu timer and exit this loop when it is time to render.
+                mjtNum simstart = d->time;
+                while (d->time - simstart < 1.0 / 60.0)
+                    mj_step(m, d);
+
+                next_step = false;
             }
-            else
-            {
-                output = 2.6;
-            }
-            return output;
-        };*/
-        //pre_q = d->qpos[0];
-        //angle_threshold = m->opt.timestep * u + 0.00001;
+            // get framebuffer viewport
+            mjrRect viewport = { 0, 0, 0, 0 };
+            glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
+
+            // update scene and render
+            mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
+            mjr_render(viewport, &scn, &con);
+
+            // swap OpenGL buffers (blocking call due to v-sync)
+            glfwSwapBuffers(window);
+
+            // process pending GUI events, call GLFW callbacks
+            glfwPollEvents();
+        }
+
+        // close GLFW, free visualization storage
+        glfwTerminate();
+        mjv_freeScene(&scn);
+        mjr_freeContext(&con);
+
+        mj_deleteData(d);
+        mj_deleteModel(m);
     }
-    else if (mode == 3)
+    else if (visualization == 0)
     {
-        mjcb_control = EventLengthController;
-        hold_dt = m->opt.timestep;
+        mlock = true;
+        mjtNum act0_ctrl = -1.41;
+        
+        while (mlock)
+        {
+            //global varaible initialization
+            event_times[0] = 0;
+            event_times[1] = 0;
+            mCounter = 0;
+            l_bar[0] = 0;
+            l_bar[1] = 0;
+            u = 1;
 
-        l_bar[0] = 0.47;//0.62
-        l_bar[1] = 0.74;//0.62
-        event_times[0] = -refractory_dt;
-        event_times[1] = -refractory_dt;
+            // load model from file and check for errors
+            m = mj_loadXML("muscle_control.xml", NULL, error, 1000);
+            if (!m)
+            {
+                printf("%s\n", error);
+                return 1;
+            }
 
-        //d->qpos[0] = 0.1;
+            // make data corresponding to model
+            d = mj_makeData(m);
+            {
+                mjcb_control = EventLengthController;
+                if (act0_ctrl >= 1.41)
+                {
+                    mlock = false;
+                }
+                d->ctrl[0] = act0_ctrl;
+                act0_ctrl += 0.01;
+            }
+            mj_forward(m, d);
+
+            while (mCounter <= 20000)
+            {
+                mj_step(m, d);
+                mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
+                mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
+                mjtNum netTorque = torque0 + torque1;
+                mCounter++;
+                if (mCounter == 20000)
+                {
+                    std::cout << d->actuator_force[1] << std::endl;
+                    fs << d->qpos[0] << ", " << torque0 << ", " << torque1 << ", " << netTorque << "\n";
+                }
+            }
+            mj_deleteData(d);
+            mj_deleteModel(m);
+            //mjcb_control = 0;
+        }
     }
     else
     {
-        //mjcb_control = NoiseGenerator;
-        d->qpos[0] = 0.1;
+        std::cout << "please select correct visualization mode to run!" << std::endl;
     }
-    mj_forward(m, d);
     
-    // run main loop, target real-time simulation and 60 fps rendering
-    while (!glfwWindowShouldClose(window)) {
-        if (start_sim||next_step)
-        {
-            // advance interactive simulation for 1/60 sec
-            //  Assuming MuJoCo can simulate faster than real-time, which it usually can,
-            //  this loop will finish on time for the next frame to be rendered at 60 fps.
-            //  Otherwise add a cpu timer and exit this loop when it is time to render.
-            mjtNum simstart = d->time;
-            while (d->time - simstart < 1.0 / 60.0)
-                mj_step(m, d);
-            
-            next_step = false;
-        }
-        // get framebuffer viewport
-        mjrRect viewport = { 0, 0, 0, 0 };
-        glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
-
-        // update scene and render
-        mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
-        mjr_render(viewport, &scn, &con);
-
-        // swap OpenGL buffers (blocking call due to v-sync)
-        glfwSwapBuffers(window);
-
-        // process pending GUI events, call GLFW callbacks
-        glfwPollEvents();
-    }
-
-    // close GLFW, free visualization storage
-    glfwTerminate();
-    mjv_freeScene(&scn);
-    mjr_freeContext(&con);
-
-    mj_deleteData(d);
-    mj_deleteModel(m);
     fs.close();
     return 0;
 }
