@@ -42,13 +42,12 @@ bool mlock = true;
 int mCounter = 0;
 
 //event controller parameters
-std::function<mjtNum(mjtNum)> threshold_func;
-mjtNum pre_q=0;
+mjtNum c_a[2];
+mjtNum c_b;
+mjtNum c_Kp = 50;
+mjtNum c_theta_bar = 0;
 mjtNum q_bar = 1.3;
 mjtNum refractory_dt[2];//0.005;
-mjtNum hold_dt = 0.0001;//must be smaller than refractory_dt
-mjtNum angle_threshold = 0;
-bool target_crossed = false;
 mjtNum u = 1;
 mjtNum l_bar[2];
 mjtNum event_times[2];
@@ -65,31 +64,20 @@ void NoiseGenerator(const mjModel* m, mjData* d)
 }
 void EventLengthController(const mjModel* m, mjData* d)
 {
-    //mjtNum moment1 = d->actuator_moment[1];
-    //if (moment1 < 0) moment1 = -moment1;
-    //mjtNum moment2 = d->actuator_moment[2];
-    //if (moment2 < 0) moment2 = -moment2;
-    //
-    ////std::cout << d->actuator_moment[1] << ", " << d->actuator_moment[2] << std::endl;
-    //fs << d->qpos[0] << ", " << moment1 << ", " << moment2 << "\n";
-    //if (d->ctrl[0] < 1.4)
-    //{
-    //    d->ctrl[0] += 0.01;
-    //}
-    
-    mjtNum dl[2];
+    mjtNum dTheta = c_Kp * (c_theta_bar - d->qpos[0]);
     for (int i = 0; i < 2; i++)
     {
-        dl[i] = d->ten_length[i] - l_bar[i];
-        if (dl[i] < 0)
+        l_bar[i] = c_a[i] * dTheta + c_b;
+        mjtNum dl = d->ten_length[i] - l_bar[i];
+        if (dl < 0)
         {
-            dl[i] = 0;
+            dl = 0;
         }
-        else if (dl[i] > 0.4)
+        else if (dl > 0.4)
         {
-            dl[i] = 0.4;
+            dl = 0.4;
         }
-        refractory_dt[i] = -0.1245 * dl[i] + 0.05;
+        refractory_dt[i] = -0.1245 * dl + 0.05;
         
         d->ctrl[i + 1] = 0;
         if (d->time - event_times[i] >= refractory_dt[i])
@@ -98,51 +86,12 @@ void EventLengthController(const mjModel* m, mjData* d)
             d->ctrl[i+1] = u;
         }
     }
+    //std::cout << d->qpos[0] << ", " << dTheta << "\n";
     /*mCounter++;
     mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
     mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
     mjtNum netTorque = torque0 + torque1;
     std::cout << mCounter << ", " << torque0 << ", " << torque1 << ", " << netTorque << "\n";*/
-}
-void EventController(const mjModel* m, mjData* d)
-{
-   /* d->ctrl[1] = 0;
-    if (mlock)
-    {
-        d->ctrl[1] = u;
-        mlock = false;
-    }*/
-
-    mjtNum dq = q_bar - d->qpos[0];
-    if (d->time - event_times[0] >= refractory_dt[0])
-    {
-        if ((q_bar >= 0 && dq > 0) || (q_bar <= 0 && dq < 0))
-        {
-            event_times[0] = d->time;
-        }
-    }
-
-    d->ctrl[1] = 0;
-    d->ctrl[2] = 0;
-    if (d->time - event_times[0] < hold_dt)
-    {
-        //if (q_bar >= 0 && dq > 0 && d->qvel[0] < threshold_func(dq))
-        if (q_bar >= 0 && dq > 0)
-        {
-            d->ctrl[1] = u;
-            //std::cout << "time diff: " << d->time - event_time << std::endl;
-        }
-        //else if (q_bar <= 0 && dq < 0 && d->qvel[0] < threshold_func(-dq))
-        else if (q_bar <= 0 && dq < 0)
-        {
-            d->ctrl[2] = u;
-        }
-    }
-    //std::cout << d->qpos[0] << std::endl;
-    //std::cout << d->qvel[0] << std::endl;
-    //std::cout << d->ctrl[1] << std::endl;
-    //d->ctrl[0] = sin(10 * d->time);
-    //fs << d->ctrl[1] << ", " << d->actuator_force[1] << "\n";
 }
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
@@ -287,9 +236,15 @@ void LengthController(const mjModel* m, mjData* d)
     //d->ctrl[0] = sin(10*d->time);
     //std::cout << d->ctrl[0] << std::endl;
 }
+mjtNum ComputeController(mjtNum maxTheta, mjtNum length0, mjtNum lengthMin)
+{
+    mjtNum output;
+    output = (lengthMin - length0) / -maxTheta;
+    return output;
+}
 int main(void)
 { 
-    visualization = 0;
+    visualization = 1;
     fs.open("plot_data.csv", std::ios::out | std::ios::app);
     
     if (visualization == 1)
@@ -331,7 +286,8 @@ int main(void)
         glfwSetMouseButtonCallback(window, mouse_button);
         glfwSetScrollCallback(window, scroll);
 
-        int mode = 3;
+        mj_forward(m, d);
+        int mode = 2;
         if (mode == 0) {
             mjcb_control = AngleController;
         }
@@ -341,25 +297,23 @@ int main(void)
         }
         else if (mode == 2)
         {
-            mjcb_control = EventController;
-        }
-        else if (mode == 3)
-        {
+            mCounter = 0;
+            
             mjcb_control = EventLengthController;
             event_times[0] = 0;
-            event_times[1] = 0;
-            mCounter = 0;
+            event_times[1] = 0; 
             u = 1;
-            d->ctrl[0] = -1.41;
-            l_bar[0] = 0.2;
-            l_bar[1] = 0.4;
+            c_theta_bar = -0.46;
+            c_b = d->ten_length[0];
+            c_a[1] = ComputeController(3.14, c_b, 0);
+            c_a[0] = -c_a[1];
+            //d->ctrl[0] = -1.41;
         }
         else
         {
             //mjcb_control = NoiseGenerator;
             d->qpos[0] = 0.1;
         }
-        mj_forward(m, d);
 
         // run main loop, target real-time simulation and 60 fps rendering
         while (!glfwWindowShouldClose(window)) {
@@ -401,6 +355,7 @@ int main(void)
     else if (visualization == 0)
     {
         mlock = true;
+        int totalSimTicks = 80000;
         mjtNum act0_ctrl = -1.41;
         
         while (mlock)
@@ -409,8 +364,8 @@ int main(void)
             event_times[0] = 0;
             event_times[1] = 0;
             mCounter = 0;
-            l_bar[0] = 0;
-            l_bar[1] = 0;
+            l_bar[0] = 0.2;
+            l_bar[1] = 0.4;
             u = 1;
 
             // load model from file and check for errors
@@ -425,7 +380,7 @@ int main(void)
             d = mj_makeData(m);
             {
                 mjcb_control = EventLengthController;
-                if (act0_ctrl >= 1.41)
+                if (act0_ctrl >= 1.0)
                 {
                     mlock = false;
                 }
@@ -434,14 +389,14 @@ int main(void)
             }
             mj_forward(m, d);
 
-            while (mCounter <= 20000)
+            while (mCounter <= totalSimTicks)
             {
                 mj_step(m, d);
                 mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
                 mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
                 mjtNum netTorque = torque0 + torque1;
                 mCounter++;
-                if (mCounter == 20000)
+                if (mCounter == totalSimTicks)
                 {
                     std::cout << d->actuator_force[1] << std::endl;
                     fs << d->qpos[0] << ", " << torque0 << ", " << torque1 << ", " << netTorque << "\n";
@@ -449,7 +404,7 @@ int main(void)
             }
             mj_deleteData(d);
             mj_deleteModel(m);
-            //mjcb_control = 0;
+            mjcb_control = 0;
         }
     }
     else

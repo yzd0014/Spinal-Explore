@@ -7,20 +7,20 @@ clear;
 % subplot(1,2,2);
 % plot(M2(:,1),M2(:,2));
 
-M = readmatrix('plot_data1.csv');
-A = readmatrix('plot_data2.csv');
+M = readmatrix('plot_data.csv');
+% A = readmatrix('plot_data2.csv');
 plot(M(:,1),M(:,2), '.', 'Color',[0,0,0.9]);
 hold on;
 plot(M(:,1),M(:,3), '.', 'Color',[0,0,0.9]);
 hold on;
-plot(M(:,1),M(:,4), '.', 'Color',[0,0,0.9]);
-hold on;
+% plot(M(:,1),M(:,4), '.', 'Color',[0,0,0.9]);
+% hold on;
 
-plot(A(:,1),A(:,2), '.', 'Color',[1,0,0]);
-hold on;
-plot(A(:,1),A(:,3), '.', 'Color',[1,0,0]);
-hold on;
-plot(A(:,1),A(:,4), '.', 'Color',[1,0,0]);
+% plot(A(:,1),A(:,2), '.', 'Color',[1,0,0]);
+% hold on;
+% plot(A(:,1),A(:,3), '.', 'Color',[1,0,0]);
+% hold on;
+% plot(A(:,1),A(:,4), '.', 'Color',[1,0,0]);
 
 xlabel('angle')
 ylabel('torque')
