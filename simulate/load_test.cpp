@@ -46,8 +46,14 @@ mjtNum refractory_dt;
 mjtNum event_time;
 mjtNum u;
 mjtNum l_bar;
-mjtNum event_times[2];
 
+mjtNum refractory_dts[2];
+mjtNum event_times[2];
+mjtNum l_bars[2];
+mjtNum dls[2];
+mjtNum c_Kp = 3;
+mjtNum c_a[2];
+mjtNum c_pos_bar = 0.25;
 void EventLengthController(const mjModel* m, mjData* d)
 {
     mjtNum dl = d->ten_length[0] - l_bar;
@@ -73,6 +79,37 @@ void EventLengthController(const mjModel* m, mjData* d)
     //std::cout << d->actuator_force[1] << " " << d->qfrc_actuator[0] << std::endl;
     //std::cout << d->xpos[5] << std::endl;
     //std::cout << d->ctrl[0] <<" "<< d->act[0] << std::endl;
+}
+
+void ModeTwoController(const mjModel* m, mjData* d)
+{
+    mjtNum lengthError = c_Kp * (c_pos_bar - d->xpos[3]);
+    for (int i = 0; i < 2; i++)
+    {
+        //l_bars[i] = c_a[i] * lengthError + 1;
+        dls[i] = d->ten_length[i] - l_bars[i];
+        if (dls[i] < 0)
+        {
+            dls[i] = 0;
+        }
+        else if (dls[i] > 1)
+        {
+            dls[i] = 1;
+        }
+        refractory_dts[i] = -0.0498 * dls[i] + 0.05;
+
+        d->ctrl[i + 1] = 0;
+        if (d->time - event_times[i] >= refractory_dts[i])
+        {
+            event_times[i] = d->time;
+            d->ctrl[i + 1] = u;
+        }
+    }
+    //std::cout << dls[0] << ", " << dls[1] << "\n";
+    //std::cout << d->act[0] << ", " << d->act[1] << "\n";
+    //std::cout << d->actuator_force[1] << ", " << d->actuator_force[2] << "\n\n";
+    //std::cout << d->xpos[3] << "\n";
+    //std::cout << refractory_dts[0] << ", " << d->act[0] << "\n";
 }
 
 // keyboard callback
@@ -164,7 +201,7 @@ void scroll(GLFWwindow* window, double xoffset, double yoffset)
 int main(void)
 {
     visualization = 1;
-    fs.open("plot_data_0.6.csv", std::ios::out | std::ios::app);
+    fs.open("plot_data.csv", std::ios::out | std::ios::app);
 
     if (visualization == 1)
     {
@@ -176,7 +213,16 @@ int main(void)
 
         // load model from file and check for errors
         //m = mj_loadXML("load_test.xml", NULL, error, 1000);
-        m = mj_loadXML("load_damping.xml", NULL, error, 1000);
+        int mode = 1;
+        if (mode == 0)
+        {
+            m = mj_loadXML("load_damping.xml", NULL, error, 1000);
+        }
+        else if (mode == 1)
+        {
+            m = mj_loadXML("translation_muscle.xml", NULL, error, 1000);
+        }
+       
         if (!m)
         {
             printf("%s\n", error);
@@ -212,11 +258,24 @@ int main(void)
         glfwSetMouseButtonCallback(window, mouse_button);
         glfwSetScrollCallback(window, scroll);
 
+        mj_forward(m, d);
+        if(mode == 0)
         {
             mjcb_control = EventLengthController;
         }
-        mj_forward(m, d);
-
+        else if (mode == 1)
+        {
+            u = 1;
+            c_a[1] = 1;
+            c_a[0] = -c_a[1];
+            l_bars[0] = 0;
+            l_bars[1] = 0.88;
+            event_times[0] = 0;
+            event_times[1] = 0;
+            d->ctrl[0] = 0;
+            mjcb_control = ModeTwoController;
+        }
+        
         // run main loop, target real-time simulation and 60 fps rendering
         while (!glfwWindowShouldClose(window)) {
             if (start_sim || next_step)
@@ -290,6 +349,7 @@ int main(void)
             }
             mj_deleteData(d);
             mj_deleteModel(m);
+            mjcb_control = 0;
         }
     }
     else

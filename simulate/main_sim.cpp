@@ -87,11 +87,13 @@ void EventLengthController(const mjModel* m, mjData* d)
         }
     }
     //std::cout << d->qpos[0] << ", " << dTheta << "\n";
-    /*mCounter++;
+   /* mCounter++;
     mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
     mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
     mjtNum netTorque = torque0 + torque1;
     std::cout << mCounter << ", " << torque0 << ", " << torque1 << ", " << netTorque << "\n";*/
+    //std::cout << d->qpos[0] << ", " << 1.0f / refractory_dt[0] << ", " << 1.0f / refractory_dt[1] << "\n";
+    //std::cout << d->time << ", " << d->act[0] << ", " << d->act[1] << "\n";
 }
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
@@ -301,13 +303,14 @@ int main(void)
             
             mjcb_control = EventLengthController;
             event_times[0] = 0;
-            event_times[1] = 0; 
+            event_times[1] = 0;
             u = 1;
-            c_theta_bar = -0.46;
+            c_theta_bar = 0.56;
             c_b = d->ten_length[0];
             c_a[1] = ComputeController(3.14, c_b, 0);
             c_a[0] = -c_a[1];
             //d->ctrl[0] = -1.41;
+            //d->ctrl[0] = -20;
         }
         else
         {
@@ -328,6 +331,11 @@ int main(void)
                     mj_step(m, d);
 
                 next_step = false;
+                /*fs << d->time << ", " << 1.0f/refractory_dt[0] << ", " << 1.0f/refractory_dt[1] << ", " << d->qpos[0] << "\n";*/
+                
+                mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
+                mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
+                fs << d->time << ", " << torque0 << ", " << torque1 << "\n";
             }
             // get framebuffer viewport
             mjrRect viewport = { 0, 0, 0, 0 };

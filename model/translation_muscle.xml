@@ -1,0 +1,32 @@
+<mujoco>
+    <option timestep="0.0001" />
+    <worldbody>
+        <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
+        <geom type="plane" size="1 1 0.1" rgba=".9 0 0 1" pos="0 0 -0.4"/>
+        <site name="world_s0" pos="1 0 0" size="0.02"/>
+        <site name="world_s1" pos="-1 0 0" size="0.02"/>
+        <body pos="0 0 0" euler="0 0 0">
+            <joint name="joint0" type="slide" axis="1 0 0" pos="2 0 0" range="-2 2" damping="0"/>
+            <geom  type="box" size="0.1 0.1 0.1" rgba="0 1 0 1" mass="1"/>
+            <site name="cube_s0" pos="0.12 0 0" size="0.02"/>
+            <site name="cube_s1" pos="-0.12 0 0" size="0.02"/>
+        </body>
+    </worldbody>
+    
+    <tendon>
+        <spatial name="mTendon0" width="0.01">
+            <site site="world_s0"/>
+            <site site="cube_s0"/>
+        </spatial>
+        <spatial name="mTendon1" width="0.01">
+            <site site="world_s1"/>
+            <site site="cube_s1"/>
+        </spatial>
+    </tendon>
+    
+    <actuator>
+        <motor name="motor" joint="joint0" ctrlrange="-100 100"/>
+        <muscle  name="muscle0" tendon="mTendon0" range="0.75 1.0" scale="200"/>
+        <muscle  name="muscle1" tendon="mTendon1" range="0.75 1.0" scale="200"/>
+    </actuator>
+</mujoco>

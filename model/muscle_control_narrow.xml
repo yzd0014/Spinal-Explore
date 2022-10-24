@@ -27,8 +27,8 @@
        </spatial>
    </tendon>
    <actuator> 
-        <position name="position" joint="joint0" kp="0" ctrlrange="-2 2"/>
-        <!-- <motor name="motor" joint="joint0" ctrlrange="-100 100"/> -->
+        <!-- <position name="position" joint="joint0" kp="0" ctrlrange="-2 2"/> -->
+        <motor name="motor" joint="joint0" ctrlrange="-100 100"/>
         <muscle  name="r-muscle" tendon="r-tendon" range="0.75 1.25"/>
         <muscle  name="l-muscle" tendon="l-tendon" range="0.75 1.25"/>
    </actuator>
