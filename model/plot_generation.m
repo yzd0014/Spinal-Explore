@@ -41,11 +41,16 @@ clear;
 % xlabel('time (seconds)');
 % ylabel('angle position');
 
+% M=readmatrix('plot_data.csv');
+% p = plot(M(:,1),M(:,2), M(:,1),M(:,3),LineWidth=2);
+% xlabel('time (seconds)');
+% ylabel('actuator torque');
+% xL = xlim;
+% yL = ylim;
+% line(xL, [0 0]);  %y-axis
+% legend('right','left');
+
 M=readmatrix('plot_data.csv');
-p = plot(M(:,1),M(:,2), M(:,1),M(:,3),LineWidth=2);
+p = plot(M(:,1),M(:,2),LineWidth=2);
 xlabel('time (seconds)');
-ylabel('right actuator torque');
-xL = xlim;
-yL = ylim;
-line(xL, [0 0]);  %y-axis
-legend('right','left');
+ylabel('joint position');

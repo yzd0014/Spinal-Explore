@@ -58,7 +58,7 @@ void EventLengthController(const mjModel* m, mjData* d)
 {
     mjtNum dl = d->ten_length[0] - l_bar;
     refractory_dt = -0.031125 * dl + 0.05;
- 
+  
     d->ctrl[1] = 0;
     if (d->time - event_time >= refractory_dt)
     {
@@ -75,6 +75,7 @@ void EventLengthController(const mjModel* m, mjData* d)
             if (d->ten_length[0] >= 2.16) mlock = false;
         }
     }
+    //std::cout << d->act[0] << std::endl;
     //std::cout << mCounter << ", " << - d->actuator_force[1] << std::endl;
     //std::cout << d->actuator_force[1] << " " << d->qfrc_actuator[0] << std::endl;
     //std::cout << d->xpos[5] << std::endl;
@@ -213,7 +214,7 @@ int main(void)
 
         // load model from file and check for errors
         //m = mj_loadXML("load_test.xml", NULL, error, 1000);
-        int mode = 1;
+        int mode = 0;
         if (mode == 0)
         {
             m = mj_loadXML("load_damping.xml", NULL, error, 1000);
