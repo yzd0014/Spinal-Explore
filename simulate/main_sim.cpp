@@ -69,8 +69,8 @@ void UpdateMaxMinPos(const mjModel* m, mjData* d)
 
 void NoiseGenerator(const mjModel* m, mjData* d)
 {
-    d->ctrl[0] = 0.34*sin(2000 * 6.28 * d->time);
-    //d->ctrl[0] = 200 * sin(100 * d->time);
+    //d->ctrl[0] = 0.34*sin(2000 * 6.28 * d->time);
+    d->ctrl[0] = sin(d->time);
     //std::cout << d->time << ", " << d->qpos[0] << std::endl;
     //std::cout << d->time << ", " << d->qpos[0] << ", " << d->ctrl[0] << std::endl;
     //fs << d->time << ", " << d->qpos[0] << "\n";
@@ -84,7 +84,15 @@ void NoiseGenerator(const mjModel* m, mjData* d)
         mCounter++;
         if (mCounter == 20) mlock = false;
     }*/
-    UpdateMaxMinPos(m, d);
+    //UpdateMaxMinPos(m, d);
+}
+
+mjtNum FilterDyn(const mjModel* m, const mjData* d, int id)
+{
+    mjtNum output = 0;
+    output = (d->ctrl[0] - d->act[0]) / -10;
+
+    return output;
 }
 
 void EventLengthController(const mjModel* m, mjData* d)
@@ -275,13 +283,14 @@ mjtNum ComputeController(mjtNum maxTheta, mjtNum length0, mjtNum lengthMin)
 int main(void)
 { 
     visualization = 1;
-    fs.open("plot_data.csv", std::ios::out | std::ios::app);
+    fs.open("../matlab/plot.csv", std::ios::out | std::ios::app);
     
     if (visualization == 1)
     {
         // load model from file and check for errors
-        m = mj_loadXML("muscle_control_narrow.xml", NULL, error, 1000);
+        //m = mj_loadXML("muscle_control_narrow.xml", NULL, error, 1000);
         //m = mj_loadXML("muscle_control.xml", NULL, error, 1000);
+        m = mj_loadXML("testbench.xml", NULL, error, 1000);
         if (!m)
         {
             printf("%s\n", error);
@@ -317,7 +326,7 @@ int main(void)
         glfwSetMouseButtonCallback(window, mouse_button);
         glfwSetScrollCallback(window, scroll);
 
-        int mode = 2;
+        int mode = -1;
         if (mode == 0) {
             mjcb_control = AngleController;
         }
@@ -352,6 +361,7 @@ int main(void)
         else
         {
             mjcb_control = NoiseGenerator;
+            mjcb_act_dyn = FilterDyn;
         }
         mj_forward(m, d);
         // run main loop, target real-time simulation and 60 fps rendering
@@ -374,6 +384,7 @@ int main(void)
                 fs << d->time << ", " << torque0 << ", " << torque1 << "\n";*/
                 //std::cout << dls[0] << ", " << dls[1] << "\n";
                 //std::cout << d->actuator_force[1] << "\n";
+                fs << d->time << ", " << d->act[0] << "\n";
             }
             // get framebuffer viewport
             mjrRect viewport = { 0, 0, 0, 0 };
