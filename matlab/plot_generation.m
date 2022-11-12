@@ -50,7 +50,7 @@ clear;
 % line(xL, [0 0]);  %y-axis
 % legend('right','left');
 
-M=readmatrix('plot_data.csv');
+M=readmatrix('plot.csv');
 p = plot(M(:,1),M(:,2),LineWidth=2);
 xlabel('time (seconds)');
-ylabel('joint position');
+ylabel('filtered value');
