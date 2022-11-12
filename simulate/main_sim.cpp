@@ -62,31 +62,7 @@ int shift_ticks;
 mjtNum sensor0[5];
 mjtNum sensor0_filtered[5];
 MuscleLengthSensor actuatorSensor[2];
-void FourthOderFilter(mjtNum* x, mjtNum* y)
-{
-    mjtNum a[5];
-    a[0] = 1;
-    a[1] = -3.998358124568343;
-    a[2] = 5.995075721448251;
-    a[3] = -3.995077068543508;
-    a[4] = 0.998359471663756;
 
-    mjtNum b[5];
-    b[0] = 9.732916985815186e-15;
-    b[1] = 3.893166794326075e-14;
-    b[2] = 5.839750191489111e-14;
-    b[3] = 3.893166794326075e-14;
-    b[4] = 9.732916985815186e-15;
-
-    y[4] = (b[0] * x[4] + b[1] * x[3] + b[2] * x[2] + b[3] * x[1] + b[4] * x[0] - a[1] * y[3] - a[2] * y[2] - a[3] * y[1] - a[4] * y[0]) / a[0];
-
-    //update x and y
-    for (int i = 0; i < 4; i++)
-    {
-        x[i] = x[i + 1];
-        y[i] = y[i + 1];
-    }
-}
 void UpdateMaxMinPos(const mjModel* m, mjData* d)
 {
     mjtNum currPos = d->qpos[0];
@@ -106,24 +82,6 @@ void MyCallback(const mjModel* m, mjData* d)
 {
     //d->ctrl[0] = 0.34*sin(2000 * 6.28 * d->time);
     //d->ctrl[0] = sin(d->time);
-    int time_ticks = round(d->time / m->opt.timestep);
-    mjtNum ctrl = (time_ticks % dt_p_ticks) ? 0 : 1;
-    if (ctrl > 0)
-    {
-        one_ticks = time_ticks;//cache ticks
-    }
-    
-    mjtNum ctrl2 = 0;
-    if (time_ticks == one_ticks + shift_ticks)
-    {
-        ctrl2 = 1;
-    }
-   
-    //d->ctrl[0] = ctrl2 - ctrl;
-    sensor0[4] = ctrl;
-    FourthOderFilter(sensor0, sensor0_filtered);
-    //std::cout << d->time << ", " << ctrl << ", " << sensor0_filtered[4] << std::endl;
-    //fs << d->time << ", " << sensor0_filtered[4] << "\n";
 }
 
 mjtNum FilterDyn(const mjModel* m, const mjData* d, int id)
