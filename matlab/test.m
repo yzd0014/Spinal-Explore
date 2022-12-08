@@ -47,3 +47,22 @@ p = polyfit(x, y, 7);
 x = linspace(0,10);
 y = p(1)*x.^6 + p(2)*x.^5+ p(3)*x.^4 + p(4)*x.^3 + p(5)*x.^2 + p(6)*x + p(7);
 plot(x,y);
+
+%% 
+clear;
+a=zeros(3,1);
+a(logical([1,0,1]))=9;
+%% 
+clear;
+fc = 200;
+fs = 1000;
+
+[b,a] = butter(6,fc/(fs/2));
+
+freqz(b,a,[],fs)
+
+subplot(2,1,1)
+ylim([-100 20])
+
+dataIn = randn(1000,1);
+dataOut = filter(b,a,dataIn);

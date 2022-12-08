@@ -1,7 +1,7 @@
 clear;
 % Time stuff
 dt = 0.00001;
-T = 10;
+T = 0.5;
 t = 0:dt:(T-dt);
 fs = 1/dt;
 
@@ -20,7 +20,6 @@ fc = 10;
 % 4th order gives better (smoother) response that first order
 %[b,a] = butter(4,2*fc/fs);
 [b,a] = butter(4,2*fc/fs);
-
 % Give you an idea of how the filter *smoothes* the puslese
 y_hat_filter=filter(b,a,y_hat);
 figure;
