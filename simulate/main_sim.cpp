@@ -43,6 +43,8 @@ int visualization;
 bool mlock = true;
 int mCounter = 0;
 
+mjtNum dt = 0.0000001;
+mjtNum remainingTimeToSimulate = 0;
 //event controller parameters
 mjtNum c_a[2];
 mjtNum c_b;
@@ -125,6 +127,7 @@ mjtNum GetLength(mjtNum input)
 
     return output;
 }
+/*
 void EventLengthController(const mjModel* m, mjData* d)
 {
     actuatorSensor[0].Update();
@@ -170,6 +173,57 @@ void EventLengthController(const mjModel* m, mjData* d)
     //mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
     //mjtNum netTorque = torque0 + torque1;
     //std::cout << d->time << ", " << d->qpos[0] << ", " << torque0 << ", " << torque1 << ", " << netTorque << "\n";
+}*/
+void EventLengthController(const mjModel* m, mjData* d)
+{
+    d->ctrl[1] = 0;
+    d->ctrl[2] = 0;
+    actuatorSensor[0].thresholdReached = false;
+    actuatorSensor[1].thresholdReached = false;
+
+    mjtNum timeSimulated = 0;
+    mjtNum currSimTime = d->time;
+    if (remainingTimeToSimulate > 0)
+    {
+        //simulation
+        actuatorSensor[0].Update(remainingTimeToSimulate, currSimTime, d->ctrl[1]);
+        actuatorSensor[1].Update(remainingTimeToSimulate, currSimTime, d->ctrl[2]);
+        timeSimulated += remainingTimeToSimulate;
+    }
+    
+    while (1)
+    {
+        if (timeSimulated + dt >= m->opt.timestep)
+        {
+            mjtNum lastDt = m->opt.timestep - timeSimulated;
+            remainingTimeToSimulate = timeSimulated + dt - m->opt.timestep;
+            //simulation
+            actuatorSensor[0].Update(lastDt, currSimTime, d->ctrl[1]);
+            actuatorSensor[1].Update(lastDt, currSimTime, d->ctrl[2]);
+            break;
+        }
+        //simualtion
+        actuatorSensor[0].Update(dt, currSimTime, d->ctrl[1]);
+        actuatorSensor[1].Update(dt, currSimTime, d->ctrl[2]);
+        timeSimulated += dt;
+    }
+    
+   /* if (actuatorSensor[0].thresholdReached)
+    {
+        mjtNum output_f = 1 / actuatorSensor[0].output_periodCopy;
+        mjtNum input1_f = actuatorSensor[0].threshold_f;
+        mjtNum input2_f = actuatorSensor[0].curr_f;
+        std::cout << "actuator1: " << output_f << ", " << input1_f << ", " << input2_f << ", " << d->act[0] << std::endl;
+    }
+    if (actuatorSensor[1].thresholdReached)
+    {
+        mjtNum output_f = 1 / actuatorSensor[1].output_periodCopy;
+        mjtNum input1_f = actuatorSensor[1].threshold_f;
+        mjtNum input2_f = actuatorSensor[1].curr_f;
+        std::cout << "actuator2: " << output_f << ", " << input1_f << ", " << input2_f << ", " << d->act[1] << std::endl;
+    }*/
+    //std::cout << actuatorSensor[0].inputsIntegrateResult << std::endl;
+    //fs << d->time << ", " << actuatorSensor[0].input1Accum << ", " << actuatorSensor[0].input2Accum << "\n";
 }
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
@@ -391,8 +445,8 @@ int main(void)
             event_times[0] = 0;
             event_times[1] = 0;
             u = 1;
-            l_bar[0] = 0.2;
-            l_bar[1] = 0.6;
+            l_bar[0] = 0.3;
+            l_bar[1] = 0.5;
             
             c_theta_bar = 0;
             c_b = d->ten_length[0];
@@ -407,8 +461,10 @@ int main(void)
             d->userdata[1] = 10;
             d->userdata[2] = 0;
 
-            actuatorSensor[0].Initialize(l_bar[0], m, d, 1);//right muscle
-            actuatorSensor[1].Initialize(l_bar[1], m, d, 2);//left muscle
+            //actuatorSensor[0].Initialize(l_bar[0], m, d, 1);//right muscle
+            //actuatorSensor[1].Initialize(l_bar[1], m, d, 2);//left muscle
+            actuatorSensor[0].Initialize(m, d, l_bar[0], 1);
+            actuatorSensor[1].Initialize(m, d, l_bar[1], 2);
         }
         else
         {
@@ -474,8 +530,8 @@ int main(void)
             event_times[0] = 0;
             event_times[1] = 0;
             mCounter = 0;
-            l_bar[0] = 0.2;
-            l_bar[1] = 0.4;
+            l_bar[0] = 0;
+            l_bar[1] = 0;
             u = 1;
 
             // load model from file and check for errors

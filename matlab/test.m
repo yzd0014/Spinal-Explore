@@ -1,5 +1,5 @@
 clear;
- tspan=0:0.0001:20;
+tspan=0:0.0001:20;
 y0=0;
 [t,y]=ode45(@(t,y) (sin(t)-y)/-10, tspan, y0);
 plot(t, y);

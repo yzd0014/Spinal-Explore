@@ -32,7 +32,7 @@
         <!-- <motor name="motor" joint="joint0" ctrlrange="-1000000 1000000"/> -->
         <!-- <muscle  name="r-muscle" tendon="r-tendon" range="0.75 1.05" scale="10000000000"/> -->
         <!-- <muscle  name="l-muscle" tendon="l-tendon" range="0.75 1.05" scale="10000000000"/> -->
-        <muscle  name="r-muscle" tendon="r-tendon" range="0.75 1.15" scale="400"/>
-        <muscle  name="l-muscle" tendon="l-tendon" range="0.75 1.15" scale="400"/>
+        <muscle  name="r-muscle" tendon="r-tendon" range="0.75 1.15" scale="4000"/>
+        <muscle  name="l-muscle" tendon="l-tendon" range="0.75 1.15" scale="4000"/>
    </actuator>
 </mujoco>

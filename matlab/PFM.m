@@ -3,25 +3,34 @@ dt = 0.00001;
 T = 0.2;
 t = 0:dt:(T-dt);
 tf = 0:dt:0.07;
-tf = 0:dt:0.5;
+%tf = 0:dt:0.5;
 fs = 1/dt;
 o_threshold = 0.0003;
 
-fc = 50;
-[b,a] = butter(2,2*fc/fs);
+fc = 10;
+[b,a] = butter(4,2*fc/fs);
 
-dt_p = 100*dt;
+dt_p = 1000*dt;
 y = zeros(numel(tf),1);
 y(mod(int32(tf/dt),int32(dt_p/dt)) == 0) = 1;
+plot(tf,y);
+return
 
 y_filter=filter(b,a,y);
 figure;
 plot(tf,y_filter,'k');
 hold on
+
+dt_p = 2000*dt;
+y = zeros(numel(tf),1);
+y(mod(int32(tf/dt),int32(dt_p/dt)) == 0) = 1;
+
+y_filter=filter(b,a,y);
+plot(tf,y_filter,'k');
 return
 
 length_range = [0,0.7];
-f_range = [50,1920];
+f_range = [50, 10000];
 p = polyfit(length_range,f_range,1);
 
 length_threshold = 0.7:-0.01:0.01;
