@@ -142,20 +142,24 @@ public:
 		input2Accum += input2;
 		
 		inputsIntegrateResult += input2 - input1;
+		if (inputsIntegrateResult < 0)
+		{
+			inputsIntegrateResult = 0;
+		}
 		output_period += dt;
 		//thresholdReached = false;
 		if (inputsIntegrateResult > freqMultiplier)
 		{
 			ctrl = 1;
+			potential = inputsIntegrateResult;
 			inputsIntegrateResult = 0;
-			output_periodCopy = output_period;
+			output_f = 1 / output_period;
 			output_period = 0;
 			thresholdReached = true;
 
 			input1Accum = 0;
 			input2Accum = 0;
 		}
-
 		currSimtime += dt;
 	}
 	mjtNum curr_f = 0;
@@ -165,10 +169,11 @@ public:
 	mjtNum thresholdLength = 0;
 	
 	mjtNum output_period = 0;
-	mjtNum output_periodCopy = 0;
+	mjtNum output_f = 0;
 	mjtNum ctrl = 0;
 	
 	mjtNum inputsIntegrateResult = 0;
+	mjtNum potential = 0;
 	bool thresholdReached = false;
 	
 	mjtNum input1Accum = 0;

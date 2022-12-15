@@ -39,6 +39,8 @@ bool next_step = false;
 unsigned int key_s_counter = 0;
 
 std::fstream fs;
+bool startLog = false;
+bool startPrinting = false;
 int visualization;
 bool mlock = true;
 int mCounter = 0;
@@ -46,9 +48,10 @@ int mCounter = 0;
 mjtNum dt = 0.0000001;
 mjtNum remainingTimeToSimulate = 0;
 //event controller parameters
+mjtNum dTheta = 0;
 mjtNum c_a[2];
 mjtNum c_b;
-mjtNum c_Kp = 50;
+mjtNum c_Kp = 5;
 mjtNum c_theta_bar = 0;
 mjtNum q_bar = 1.3;
 mjtNum refractory_dt[2];//0.005;
@@ -176,6 +179,12 @@ void EventLengthController(const mjModel* m, mjData* d)
 }*/
 void EventLengthController(const mjModel* m, mjData* d)
 {
+    dTheta = c_Kp * (c_theta_bar - d->qpos[0]);
+    for (int i = 0; i < 2; i++)
+    {
+        actuatorSensor[i].thresholdLength = c_a[i] * dTheta + c_b;
+    }
+    
     d->ctrl[1] = 0;
     d->ctrl[2] = 0;
     actuatorSensor[0].thresholdReached = false;
@@ -206,24 +215,23 @@ void EventLengthController(const mjModel* m, mjData* d)
         actuatorSensor[0].Update(dt, currSimTime, d->ctrl[1]);
         actuatorSensor[1].Update(dt, currSimTime, d->ctrl[2]);
         timeSimulated += dt;
+        if (startLog) fs << d->time << ", " << actuatorSensor[1].input1Accum << ", " << actuatorSensor[1].input2Accum << "\n";
     }
-    
-   /* if (actuatorSensor[0].thresholdReached)
+    if (startPrinting)
     {
-        mjtNum output_f = 1 / actuatorSensor[0].output_periodCopy;
-        mjtNum input1_f = actuatorSensor[0].threshold_f;
-        mjtNum input2_f = actuatorSensor[0].curr_f;
-        std::cout << "actuator1: " << output_f << ", " << input1_f << ", " << input2_f << ", " << d->act[0] << std::endl;
+        {
+            mjtNum output_f = actuatorSensor[0].output_f;
+            mjtNum input1_f = actuatorSensor[0].threshold_f;
+            mjtNum input2_f = actuatorSensor[0].curr_f;
+            std::cout << "actuator1 threshold: " << actuatorSensor[0].thresholdLength << " outputf: " << output_f << " threshold_f: " << input1_f << " currlength_f: " << input2_f << " dtheta: " << dTheta << std::endl;
+        }
+        {
+            mjtNum output_f = actuatorSensor[1].output_f;
+            mjtNum input1_f = actuatorSensor[1].threshold_f;
+            mjtNum input2_f = actuatorSensor[1].curr_f;
+            std::cout << "actuator2 threshold: " << actuatorSensor[1].thresholdLength << " output_f: " << output_f << " threshold_f: " << input1_f << " currlength_f: " << input2_f << " dtheta: " << dTheta << std::endl;
+        }
     }
-    if (actuatorSensor[1].thresholdReached)
-    {
-        mjtNum output_f = 1 / actuatorSensor[1].output_periodCopy;
-        mjtNum input1_f = actuatorSensor[1].threshold_f;
-        mjtNum input2_f = actuatorSensor[1].curr_f;
-        std::cout << "actuator2: " << output_f << ", " << input1_f << ", " << input2_f << ", " << d->act[1] << std::endl;
-    }*/
-    //std::cout << actuatorSensor[0].inputsIntegrateResult << std::endl;
-    //fs << d->time << ", " << actuatorSensor[0].input1Accum << ", " << actuatorSensor[0].input2Accum << "\n";
 }
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
@@ -255,13 +263,21 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
             key_s_counter = 0;
         }
     }
+
+    if (act == GLFW_PRESS && key == GLFW_KEY_L) startLog = !startLog;
+    if (act == GLFW_PRESS && key == GLFW_KEY_P) startPrinting = !startPrinting;
+
     if (act == GLFW_PRESS && key == GLFW_KEY_D)
     {
+        //actuatorSensor[0].thresholdLength -= 0.005;
+        //actuatorSensor[1].thresholdLength += 0.005;
         c_theta_bar += 0.05;
     }
     if (act == GLFW_PRESS && key == GLFW_KEY_A)
     {
-        c_theta_bar -= 0.05;
+       //actuatorSensor[0].thresholdLength += 0.005;
+       //actuatorSensor[1].thresholdLength -= 0.005;
+       c_theta_bar -= 0.05;
     }
 }
 
@@ -445,8 +461,8 @@ int main(void)
             event_times[0] = 0;
             event_times[1] = 0;
             u = 1;
-            l_bar[0] = 0.3;
-            l_bar[1] = 0.5;
+            l_bar[0] = 0.7;
+            l_bar[1] = 0.4;
             
             c_theta_bar = 0;
             c_b = d->ten_length[0];
@@ -494,6 +510,9 @@ int main(void)
 
                 next_step = false;
                 //if (d->time > 10) break;
+                //std::cout << "actuator1 torque: " << d->actuator_force[1] * d->actuator_moment[1] << std::endl;
+                //std::cout << "actuator2 torque: " << d->actuator_force[2] * d->actuator_moment[2] << std::endl;
+                //std::cout << "dTheta: " << dTheta << std::endl;
             }
             // get framebuffer viewport
             mjrRect viewport = { 0, 0, 0, 0 };

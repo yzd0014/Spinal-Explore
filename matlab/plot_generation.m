@@ -51,9 +51,11 @@ clear;
 % legend('right','left');
 
 M=readmatrix('plot.csv');
+%plot(M(:,1),M(:,3),LineWidth=2);
 plot(M(:,1),M(:,2),M(:,1),M(:,3),LineWidth=2);
+legend('1','2');
 hold on;
-plot(M(:,1),circshift(M(:,2), 1611),LineWidth=2);
-xlim([0.98 1.04]);
+%plot(M(:,1),circshift(M(:,2), 1611),LineWidth=2);
+%xlim([0.98 1.04]);
 xlabel('time (seconds)');
 ylabel('filtered value');
