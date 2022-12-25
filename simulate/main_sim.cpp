@@ -14,6 +14,7 @@
 #include "simulate.h"
 #include "array_safety.h"
 
+#include "WriteToFile.h"
 #include "MuscleLengthSensor.h"
 //#include <Eigen/Eigen>
 //using namespace Eigen;
@@ -38,15 +39,14 @@ bool start_sim = false;
 bool next_step = false;
 unsigned int key_s_counter = 0;
 
-std::fstream fs;
 bool startLog = false;
 bool startPrinting = false;
 int visualization;
 bool mlock = true;
 int mCounter = 0;
 
-mjtNum dt = 0.0000001;
-mjtNum remainingTimeToSimulate = 0;
+mjtNum dt = 0.0000001;//sub-timestep size
+mjtNum remainingTimeFromeLastStep = 0;
 //event controller parameters
 mjtNum dTheta = 0;
 mjtNum c_a[2];
@@ -54,129 +54,9 @@ mjtNum c_b;
 mjtNum c_Kp = 5;
 mjtNum c_theta_bar = 0;
 mjtNum q_bar = 1.3;
-mjtNum refractory_dt[2];//0.005;
-mjtNum u = 1;
 mjtNum l_bar[2];
-mjtNum event_times[2];
-mjtNum dls[2];
 
-mjtNum dt_p = 0.01;
-int dt_p_ticks = 0;
-int one_ticks;
-int shift_ticks;
-mjtNum sensor0[5];
-mjtNum sensor0_filtered[5];
 MuscleLengthSensor actuatorSensor[2];
-
-void UpdateMaxMinPos(const mjModel* m, mjData* d)
-{
-    mjtNum currPos = d->qpos[0];
-    //std::cout << currPos << std::endl;
-    if (currPos > d->userdata[0])
-    {
-        d->userdata[0] = currPos;
-    }
-    if (currPos < d->userdata[1])
-    {
-        d->userdata[1] = currPos;
-    }
-    d->userdata[2] = d->userdata[0] - d->userdata[1];
-}
-
-void MyCallback(const mjModel* m, mjData* d)
-{
-    //d->ctrl[0] = 0.34*sin(2000 * 6.28 * d->time);
-    //d->ctrl[0] = sin(d->time);
-}
-
-mjtNum FilterDyn(const mjModel* m, const mjData* d, int id)
-{
-    mjtNum output = 0;
-    output = (d->ctrl[0] - d->act[0]) / -10;
-
-    return output;
-}
-mjtNum GetLength(mjtNum input)
-{
-    mjtNum output = 0;
-    if (input < 0.00012)
-    {
-        output = 833.333 * input;
-    }
-    else if (input >= 0.00012 && input < 0.00034)
-    {
-        output = 454.545 * input + 0.0454545;
-    }
-    else if (input >= 0.00034 && input < 0.0006)
-    {
-        output = 384.615 * input + 0.0692308;
-    }
-    else if (input >= 0.0006 && input < 0.001)
-    {
-        output = 250 * input + 0.15;
-    }
-    else if (input >= 0.001 && input < 0.0018)
-    {
-        output = 125 * input + 0.275;
-    }
-    else if (input >= 0.0018 && input < 0.0033)
-    {
-        output = 66.6667 * input + 0.38;
-    }
-    else if (input > 0.0033 && input < 0.0089)
-    {
-        output = 17.8571 * input + 0.541071;
-    }
-
-    return output;
-}
-/*
-void EventLengthController(const mjModel* m, mjData* d)
-{
-    actuatorSensor[0].Update();
-    actuatorSensor[1].Update();
-
-    mjtNum dTheta = c_Kp * (c_theta_bar - d->qpos[0]);
-    for (int i = 0; i < 2; i++)
-    {
-        //l_bar[i] = c_a[i] * dTheta + c_b;
-        //dls[i] = d->ten_length[i] - l_bar[i];
-        actuatorSensor[i].thresholdLength = c_a[i] * dTheta + c_b;
-        if (actuatorSensor[i].thresholdLength < 0)
-        {
-            actuatorSensor[i].thresholdLength = 0;
-        }
-        if (actuatorSensor[i].thresholdLength > 0.8)
-        {
-            actuatorSensor[i].thresholdLength = 0.8;
-        }
-        dls[i] = GetLength(actuatorSensor[i].output);
-        //dls[i] = 0;
-        if (dls[i] < 0)
-        {
-            dls[i] = 0;
-        }
-        else if (dls[i] > 0.4)
-        {
-            dls[i] = 0.4;
-        }
-        //dl = 0.4;
-        //refractory_dt[i] = -0.1245 * dl + 0.05;
-        refractory_dt[i] = -2.4875 * dls[i] + 1;
-        
-        d->ctrl[i + 1] = 0;
-        if (d->time - event_times[i] >= refractory_dt[i])
-        {
-            event_times[i] = d->time;
-            d->ctrl[i+1] = u;
-        }
-    }
-    //fs << d->time << ", " << d->qpos[0] << "\n";
-    //mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
-    //mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
-    //mjtNum netTorque = torque0 + torque1;
-    //std::cout << d->time << ", " << d->qpos[0] << ", " << torque0 << ", " << torque1 << ", " << netTorque << "\n";
-}*/
 void EventLengthController(const mjModel* m, mjData* d)
 {
     dTheta = c_Kp * (c_theta_bar - d->qpos[0]);
@@ -187,50 +67,34 @@ void EventLengthController(const mjModel* m, mjData* d)
     
     d->ctrl[1] = 0;
     d->ctrl[2] = 0;
-    actuatorSensor[0].thresholdReached = false;
+    actuatorSensor[0].thresholdReached = false;//reset for each timesetp, it will be updated in the following sub-timesteps
     actuatorSensor[1].thresholdReached = false;
 
-    mjtNum timeSimulated = 0;
-    mjtNum currSimTime = d->time;
-    if (remainingTimeToSimulate > 0)
+    mjtNum timeSimulatedInCurrentStep = 0;
+    if (remainingTimeFromeLastStep > 0)
     {
         //simulation
-        actuatorSensor[0].Update(remainingTimeToSimulate, currSimTime, d->ctrl[1]);
-        actuatorSensor[1].Update(remainingTimeToSimulate, currSimTime, d->ctrl[2]);
-        timeSimulated += remainingTimeToSimulate;
+        actuatorSensor[0].Update(remainingTimeFromeLastStep, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
+        actuatorSensor[1].Update(remainingTimeFromeLastStep, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
+        timeSimulatedInCurrentStep += remainingTimeFromeLastStep;
     }
     
     while (1)
     {
-        if (timeSimulated + dt >= m->opt.timestep)
+        if (timeSimulatedInCurrentStep + dt >= m->opt.timestep)
         {
-            mjtNum lastDt = m->opt.timestep - timeSimulated;
-            remainingTimeToSimulate = timeSimulated + dt - m->opt.timestep;
+            mjtNum lastDt = m->opt.timestep - timeSimulatedInCurrentStep;
+            remainingTimeFromeLastStep = timeSimulatedInCurrentStep + dt - m->opt.timestep;
             //simulation
-            actuatorSensor[0].Update(lastDt, currSimTime, d->ctrl[1]);
-            actuatorSensor[1].Update(lastDt, currSimTime, d->ctrl[2]);
+            actuatorSensor[0].Update(lastDt, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
+            actuatorSensor[1].Update(lastDt, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
             break;
         }
         //simualtion
-        actuatorSensor[0].Update(dt, currSimTime, d->ctrl[1]);
-        actuatorSensor[1].Update(dt, currSimTime, d->ctrl[2]);
-        timeSimulated += dt;
+        actuatorSensor[0].Update(dt, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
+        actuatorSensor[1].Update(dt, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
+        timeSimulatedInCurrentStep += dt;
         if (startLog) fs << d->time << ", " << actuatorSensor[1].input1Accum << ", " << actuatorSensor[1].input2Accum << "\n";
-    }
-    if (startPrinting)
-    {
-        {
-            mjtNum output_f = actuatorSensor[0].output_f;
-            mjtNum input1_f = actuatorSensor[0].threshold_f;
-            mjtNum input2_f = actuatorSensor[0].curr_f;
-            std::cout << "actuator1 threshold: " << actuatorSensor[0].thresholdLength << " outputf: " << output_f << " threshold_f: " << input1_f << " currlength_f: " << input2_f << " dtheta: " << dTheta << std::endl;
-        }
-        {
-            mjtNum output_f = actuatorSensor[1].output_f;
-            mjtNum input1_f = actuatorSensor[1].threshold_f;
-            mjtNum input2_f = actuatorSensor[1].curr_f;
-            std::cout << "actuator2 threshold: " << actuatorSensor[1].thresholdLength << " output_f: " << output_f << " threshold_f: " << input1_f << " currlength_f: " << input2_f << " dtheta: " << dTheta << std::endl;
-        }
     }
 }
 // keyboard callback
@@ -269,14 +133,10 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
 
     if (act == GLFW_PRESS && key == GLFW_KEY_D)
     {
-        //actuatorSensor[0].thresholdLength -= 0.005;
-        //actuatorSensor[1].thresholdLength += 0.005;
         c_theta_bar += 0.05;
     }
     if (act == GLFW_PRESS && key == GLFW_KEY_A)
     {
-       //actuatorSensor[0].thresholdLength += 0.005;
-       //actuatorSensor[1].thresholdLength -= 0.005;
        c_theta_bar -= 0.05;
     }
 }
@@ -458,9 +318,6 @@ int main(void)
             mCounter = 0;
             
             mjcb_control = EventLengthController;
-            event_times[0] = 0;
-            event_times[1] = 0;
-            u = 1;
             l_bar[0] = 0.7;
             l_bar[1] = 0.4;
             
@@ -477,24 +334,10 @@ int main(void)
             d->userdata[1] = 10;
             d->userdata[2] = 0;
 
-            //actuatorSensor[0].Initialize(l_bar[0], m, d, 1);//right muscle
-            //actuatorSensor[1].Initialize(l_bar[1], m, d, 2);//left muscle
-            actuatorSensor[0].Initialize(m, d, l_bar[0], 1);
-            actuatorSensor[1].Initialize(m, d, l_bar[1], 2);
+            actuatorSensor[0] = MuscleLengthSensor(m, d, l_bar[0], 1);
+            actuatorSensor[1] = MuscleLengthSensor(m, d, l_bar[1], 2);
         }
-        else
-        {
-            mjcb_control = MyCallback;
-            //mjcb_act_dyn = FilterDyn;
-            dt_p_ticks = round(dt_p / m->opt.timestep);
-            shift_ticks = dt_p_ticks / 2;
-            for (int i = 0; i < 5; i++)
-            {
-                sensor0[i] = 0;
-                sensor0_filtered[i] = 0;
-            }
-       
-        }
+ 
         mj_forward(m, d);
         // run main loop, target real-time simulation and 60 fps rendering
         while (!glfwWindowShouldClose(window)) {
@@ -509,10 +352,6 @@ int main(void)
                     mj_step(m, d);
 
                 next_step = false;
-                //if (d->time > 10) break;
-                //std::cout << "actuator1 torque: " << d->actuator_force[1] * d->actuator_moment[1] << std::endl;
-                //std::cout << "actuator2 torque: " << d->actuator_force[2] * d->actuator_moment[2] << std::endl;
-                //std::cout << "dTheta: " << dTheta << std::endl;
             }
             // get framebuffer viewport
             mjrRect viewport = { 0, 0, 0, 0 };
@@ -546,12 +385,9 @@ int main(void)
         while (mlock)
         {
             //global varaible initialization
-            event_times[0] = 0;
-            event_times[1] = 0;
             mCounter = 0;
             l_bar[0] = 0;
             l_bar[1] = 0;
-            u = 1;
 
             // load model from file and check for errors
             m = mj_loadXML("muscle_control.xml", NULL, error, 1000);
