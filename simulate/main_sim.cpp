@@ -15,7 +15,7 @@
 #include "array_safety.h"
 
 #include "WriteToFile.h"
-#include "MuscleLengthSensor.h"
+#include "ActuationNeuron.h"
 //#include <Eigen/Eigen>
 //using namespace Eigen;
 
@@ -56,26 +56,26 @@ mjtNum c_theta_bar = 0;
 mjtNum q_bar = 1.3;
 mjtNum l_bar[2];
 
-MuscleLengthSensor actuatorSensor[2];
+ActuationNeuron actuationNeurons[2];
 void EventLengthController(const mjModel* m, mjData* d)
 {
     dTheta = c_Kp * (c_theta_bar - d->qpos[0]);
     for (int i = 0; i < 2; i++)
     {
-        actuatorSensor[i].thresholdLength = c_a[i] * dTheta + c_b;
+        actuationNeurons[i].thresholdLength = c_a[i] * dTheta + c_b;
     }
     
     d->ctrl[1] = 0;
     d->ctrl[2] = 0;
-    actuatorSensor[0].thresholdReached = false;//reset for each timesetp, it will be updated in the following sub-timesteps
-    actuatorSensor[1].thresholdReached = false;
+    actuationNeurons[0].thresholdReached = false;//reset for each timesetp, it will be updated in the following sub-timesteps
+    actuationNeurons[1].thresholdReached = false;
 
     mjtNum timeSimulatedInCurrentStep = 0;
     if (remainingTimeFromeLastStep > 0)
     {
         //simulation
-        actuatorSensor[0].Update(remainingTimeFromeLastStep, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
-        actuatorSensor[1].Update(remainingTimeFromeLastStep, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
+        actuationNeurons[0].Update(remainingTimeFromeLastStep, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
+        actuationNeurons[1].Update(remainingTimeFromeLastStep, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
         timeSimulatedInCurrentStep += remainingTimeFromeLastStep;
     }
     
@@ -86,15 +86,15 @@ void EventLengthController(const mjModel* m, mjData* d)
             mjtNum lastDt = m->opt.timestep - timeSimulatedInCurrentStep;
             remainingTimeFromeLastStep = timeSimulatedInCurrentStep + dt - m->opt.timestep;
             //simulation
-            actuatorSensor[0].Update(lastDt, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
-            actuatorSensor[1].Update(lastDt, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
+            actuationNeurons[0].Update(lastDt, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
+            actuationNeurons[1].Update(lastDt, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
             break;
         }
         //simualtion
-        actuatorSensor[0].Update(dt, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
-        actuatorSensor[1].Update(dt, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
+        actuationNeurons[0].Update(dt, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
+        actuationNeurons[1].Update(dt, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
         timeSimulatedInCurrentStep += dt;
-        if (startLog) fs << d->time << ", " << actuatorSensor[1].input1Accum << ", " << actuatorSensor[1].input2Accum << "\n";
+        if (startLog) fs << d->time << ", " << actuationNeurons[1].input1Accum << ", " << actuationNeurons[1].input2Accum << "\n";
     }
 }
 // keyboard callback
@@ -334,8 +334,8 @@ int main(void)
             d->userdata[1] = 10;
             d->userdata[2] = 0;
 
-            actuatorSensor[0] = MuscleLengthSensor(m, d, l_bar[0], 1);
-            actuatorSensor[1] = MuscleLengthSensor(m, d, l_bar[1], 2);
+            actuationNeurons[0] = ActuationNeuron(m, d, l_bar[0], 1);
+            actuationNeurons[1] = ActuationNeuron(m, d, l_bar[1], 2);
         }
  
         mj_forward(m, d);

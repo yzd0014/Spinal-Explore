@@ -2,11 +2,11 @@
 #include <mujoco/mujoco.h>
 #include <mujoco/mjxmacro.h>
 
-class MuscleLengthSensor
+class ActuationNeuron
 {
 public:
-	MuscleLengthSensor(){}
-	MuscleLengthSensor(mjModel* i_m, mjData* i_d, mjtNum i_thresholdLength, int i_actuatorId):
+	ActuationNeuron(){}
+	ActuationNeuron(mjModel* i_m, mjData* i_d, mjtNum i_thresholdLength, int i_actuatorId):
 		m(i_m),
 		d(i_d),
 		thresholdLength(i_thresholdLength),
