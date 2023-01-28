@@ -28,9 +28,9 @@
        </spatial>
    </tendon>
    <actuator> 
-        <!-- <position name="position" joint="joint0" kp="50" ctrlrange="-2 2"/> -->
-        <motor name="motor" joint="joint0" ctrlrange="-1000000 1000000"/>
-        <muscle  name="r-muscle" tendon="r-tendon" range="0.75 1.25" scale="200"/>
-        <muscle  name="l-muscle" tendon="l-tendon" range="0.75 1.25" scale="200"/>
+        <position name="position" joint="joint0" kp="0" ctrlrange="-2 2"/>
+        <!-- <motor name="motor" joint="joint0" ctrlrange="-1000000 1000000"/> -->
+        <muscle  name="r-muscle" tendon="r-tendon" range="0.75 1.15" scale="40"/>
+        <muscle  name="l-muscle" tendon="l-tendon" range="0.75 1.15" scale="40"/>
    </actuator>
 </mujoco>

@@ -41,7 +41,7 @@ unsigned int key_s_counter = 0;
 
 bool startLog = false;
 bool startPrinting = false;
-int visualization;
+int visualization = 1;
 bool mlock = true;
 int mCounter = 0;
 
@@ -59,11 +59,11 @@ mjtNum l_bar[2];
 ActuationNeuron actuationNeurons[2];
 void EventLengthController(const mjModel* m, mjData* d)
 {
-    dTheta = c_Kp * (c_theta_bar - d->qpos[0]);
+    /*dTheta = c_Kp * (c_theta_bar - d->qpos[0]);
     for (int i = 0; i < 2; i++)
     {
         actuationNeurons[i].thresholdLength = c_a[i] * dTheta + c_b;
-    }
+    }*/
     
     d->ctrl[1] = 0;
     d->ctrl[2] = 0;
@@ -96,6 +96,9 @@ void EventLengthController(const mjModel* m, mjData* d)
         timeSimulatedInCurrentStep += dt;
         if (startLog) fs << d->time << ", " << actuationNeurons[1].input1Accum << ", " << actuationNeurons[1].input2Accum << "\n";
     }
+    if (d->qpos[0] > 0) d->ctrl[1] = 0;
+    if (d->qpos[0] < 0) d->ctrl[2] = 0;
+    fs << d->time << ", " << d->qpos[0] << ", " << d->qvel[0] << ", " << d->act[0] << ", " << actuationNeurons[0].input2 << ", " << d->act[1] << ", " << actuationNeurons[1].input2 << "\n";
 }
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
@@ -258,11 +261,49 @@ mjtNum ComputeController(mjtNum maxTheta, mjtNum length0, mjtNum lengthMin)
     output = (lengthMin - length0) / -maxTheta;
     return output;
 }
+
+void InitializeController(const mjModel* m, mjData* d)
+{
+    mj_forward(m, d);
+    int mode = 2;
+    if (mode == 0) {
+        mjcb_control = AngleController;
+    }
+    else if (mode == 1)
+    {
+        mjcb_control = LengthController;
+    }
+    else if (mode == 2)
+    {
+        mCounter = 0;
+
+        mjcb_control = EventLengthController;
+        l_bar[0] = 0.5;
+        l_bar[1] = 0.5;
+
+        c_theta_bar = 0;
+        c_b = d->ten_length[0];
+        c_a[1] = ComputeController(3.14, c_b, 0);
+        c_a[0] = -c_a[1];
+
+        //d->ctrl[0] = -1.41;
+        //d->ctrl[0] = 0;
+        //d->qpos[0] = 0.3;
+        d->qvel[0] = 0.5;
+
+        d->userdata[0] = -10;
+        d->userdata[1] = 10;
+        d->userdata[2] = 0;
+
+        actuationNeurons[0] = ActuationNeuron(m, d, l_bar[0], 1, 2);
+        actuationNeurons[1] = ActuationNeuron(m, d, l_bar[1], 2, 1);
+    }
+    mj_forward(m, d);
+}
+
 int main(void)
 { 
-    visualization = 1;
     fs.open("../matlab/plot.csv", std::ios::out | std::ios::app);
-    
     if (visualization == 1)
     {
         // load model from file and check for errors
@@ -303,42 +344,16 @@ int main(void)
         glfwSetCursorPosCallback(window, mouse_move);
         glfwSetMouseButtonCallback(window, mouse_button);
         glfwSetScrollCallback(window, scroll);
+        
+        double arr_view[] = { 90, -5, 3, 0, -0.000000, 1.5 };
+        cam.azimuth = arr_view[0];
+        cam.elevation = arr_view[1];
+        cam.distance = arr_view[2];
+        cam.lookat[0] = arr_view[3];
+        cam.lookat[1] = arr_view[4];
+        cam.lookat[2] = arr_view[5];
 
-        mj_forward(m, d);
-        int mode = 2;
-        if (mode == 0) {
-            mjcb_control = AngleController;
-        }
-        else if (mode == 1)
-        {
-            mjcb_control = LengthController;
-        }
-        else if (mode == 2)
-        {
-            mCounter = 0;
-            
-            mjcb_control = EventLengthController;
-            l_bar[0] = 0.7;
-            l_bar[1] = 0.4;
-            
-            c_theta_bar = 0;
-            c_b = d->ten_length[0];
-            c_a[1] = ComputeController(3.14, c_b, 0);
-            c_a[0] = -c_a[1];
-            
-            //d->ctrl[0] = -1.41;
-            //d->ctrl[0] = 0;
-            //d->qpos[0] = 0.3;
-
-            d->userdata[0] = -10;
-            d->userdata[1] = 10;
-            d->userdata[2] = 0;
-
-            actuationNeurons[0] = ActuationNeuron(m, d, l_bar[0], 1);
-            actuationNeurons[1] = ActuationNeuron(m, d, l_bar[1], 2);
-        }
- 
-        mj_forward(m, d);
+        InitializeController(m, d);
         // run main loop, target real-time simulation and 60 fps rendering
         while (!glfwWindowShouldClose(window)) {
             if (start_sim || next_step)

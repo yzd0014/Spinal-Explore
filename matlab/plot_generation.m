@@ -30,17 +30,33 @@ clear;
 % line([0 0], yL);  %x-axis
 % line(xL, [0 0]);  %y-axis
 
-% M=readmatrix('plot_data.csv');
-% subplot(2,1,1);
-% plot(M(:,1),M(:,2), M(:,1),M(:,3), LineWidth=2);
-% legend('right','left');
-% xlabel('time (seconds)');
-% ylabel('control signal frequency');
-% subplot(2,1,2);
-% plot(M(:,1),M(:,4),LineWidth=2);
-% xlabel('time (seconds)');
-% ylabel('angle position');
-
+M=readmatrix('plot.csv');
+subplot(6,1,1);
+plot(M(:,1),M(:,2),LineWidth=2);
+refline(0,0)
+xlabel('t');
+ylabel('qpos');
+subplot(6,1,2);
+plot(M(:,1),M(:,3),LineWidth=2);
+refline(0,0);
+xlabel('t');
+ylabel('qvel');
+subplot(6,1,3);
+plot(M(:,1),M(:,4),LineWidth=0.2);
+xlabel('t');
+ylabel('right ctrl');
+subplot(6,1,4);
+plot(M(:,1),M(:,5),LineWidth=0.2);
+xlabel('t');
+ylabel('right length');
+subplot(6,1,5);
+plot(M(:,1),M(:,6),LineWidth=0.2);
+xlabel('t');
+ylabel('left ctrl');
+subplot(6,1,6);
+plot(M(:,1),M(:,7),LineWidth=0.2);
+xlabel('t');
+ylabel('left length');
 % M=readmatrix('plot_data.csv');
 % p = plot(M(:,1),M(:,2), M(:,1),M(:,3),LineWidth=2);
 % xlabel('time (seconds)');
@@ -50,12 +66,12 @@ clear;
 % line(xL, [0 0]);  %y-axis
 % legend('right','left');
 
-M=readmatrix('plot.csv');
-%plot(M(:,1),M(:,3),LineWidth=2);
-plot(M(:,1),M(:,2),M(:,1),M(:,3),LineWidth=2);
-legend('1','2');
-hold on;
-%plot(M(:,1),circshift(M(:,2), 1611),LineWidth=2);
-%xlim([0.98 1.04]);
-xlabel('time (seconds)');
-ylabel('filtered value');
+% M=readmatrix('plot.csv');
+% %plot(M(:,1),M(:,3),LineWidth=2);
+% plot(M(:,1),M(:,2),M(:,1),M(:,3),LineWidth=2);
+% legend('1','2');
+% hold on;
+% %plot(M(:,1),circshift(M(:,2), 1611),LineWidth=2);
+% %xlim([0.98 1.04]);
+% xlabel('time (seconds)');
+% ylabel('filtered value');
