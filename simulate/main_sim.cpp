@@ -57,7 +57,7 @@ mjtNum q_bar = 1.3;
 mjtNum l_bar[2];
 
 ActuationNeuron actuationNeurons[2];
-void EventLengthController(const mjModel* m, mjData* d)
+void SpikingController(const mjModel* m, mjData* d)
 {
     /*dTheta = c_Kp * (c_theta_bar - d->qpos[0]);
     for (int i = 0; i < 2; i++)
@@ -99,6 +99,28 @@ void EventLengthController(const mjModel* m, mjData* d)
     if (d->qpos[0] > 0) d->ctrl[1] = 0;
     if (d->qpos[0] < 0) d->ctrl[2] = 0;
     fs << d->time << ", " << d->qpos[0] << ", " << d->qvel[0] << ", " << d->act[0] << ", " << actuationNeurons[0].input2 << ", " << d->act[1] << ", " << actuationNeurons[1].input2 << "\n";
+}
+void BaseLineController(const mjModel* m, mjData* d)
+{
+    mjtNum dl0 = d->actuator_length[1] - l_bar[0];
+    if (dl0 < 0) dl0 = 0;
+    d->ctrl[1] = dl0 * 0.1;
+    
+    mjtNum dl1 = d->actuator_length[2] - l_bar[1];
+    if (dl1 < 0) dl1 = 0;
+    d->ctrl[2] = dl1 * 0.1;
+
+    mjtNum inhibitionCoeff = 0.5;
+    if (d->actuator_velocity[2] > 0) d->ctrl[1] *= inhibitionCoeff;
+    if (d->actuator_velocity[1] > 0) d->ctrl[2] *= inhibitionCoeff;
+   /* if (d->qpos[0] > 0) d->ctrl[1] = d->ctrl[1] * inhibitionCoeff;
+    if (d->qpos[0] < 0) d->ctrl[2] = d->ctrl[2] * inhibitionCoeff;*/
+    
+    //fs << d->time << ", " << d->qpos[0] << ", " << d->qvel[0] << ", " << d->act[0] << ", " << d->actuator_length[1] << ", " << d->act[1] << ", " << d->actuator_length[2] << "\n";
+    mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
+    mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
+    mjtNum netTorque = torque0 + torque1;
+    if (startPrinting) std::cout << netTorque << std::endl;
 }
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
@@ -265,19 +287,23 @@ mjtNum ComputeController(mjtNum maxTheta, mjtNum length0, mjtNum lengthMin)
 void InitializeController(const mjModel* m, mjData* d)
 {
     mj_forward(m, d);
-    int mode = 2;
+    int mode = 1;
     if (mode == 0) {
         mjcb_control = AngleController;
     }
     else if (mode == 1)
     {
-        mjcb_control = LengthController;
+        mjcb_control = BaseLineController;
+        
+        l_bar[0] = 0.55;
+        l_bar[1] = 0.55;
+        d->qvel[0] = 2;
     }
     else if (mode == 2)
     {
         mCounter = 0;
 
-        mjcb_control = EventLengthController;
+        mjcb_control = SpikingController;
         l_bar[0] = 0.5;
         l_bar[1] = 0.5;
 
@@ -415,7 +441,7 @@ int main(void)
             // make data corresponding to model
             d = mj_makeData(m);
             {
-                mjcb_control = EventLengthController;
+                mjcb_control = SpikingController;
                 if (act0_ctrl >= 1.0)
                 {
                     mlock = false;

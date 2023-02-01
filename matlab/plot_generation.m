@@ -30,37 +30,38 @@ clear;
 % line([0 0], yL);  %x-axis
 % line(xL, [0 0]);  %y-axis
 
+% M=readmatrix('plot.csv');
+% subplot(6,1,1);
+% plot(M(:,1),M(:,2),LineWidth=2);
+% refline(0,0)
+% xlabel('t');
+% ylabel('qpos');
+% subplot(6,1,2);
+% plot(M(:,1),M(:,3),LineWidth=2);
+% refline(0,0);
+% xlabel('t');
+% ylabel('qvel');
+% subplot(6,1,3);
+% plot(M(:,1),M(:,4),LineWidth=0.2);
+% xlabel('t');
+% ylabel('right ctrl');
+% subplot(6,1,4);
+% plot(M(:,1),M(:,5),LineWidth=0.2);
+% xlabel('t');
+% ylabel('right length');
+% subplot(6,1,5);
+% plot(M(:,1),M(:,6),LineWidth=0.2);
+% xlabel('t');
+% ylabel('left ctrl');
+% subplot(6,1,6);
+% plot(M(:,1),M(:,7),LineWidth=0.2);
+% xlabel('t');
+% ylabel('left length');
+
+
 M=readmatrix('plot.csv');
-subplot(6,1,1);
-plot(M(:,1),M(:,2),LineWidth=2);
+p = plot(M(:,1),M(:,2), M(:,1),M(:,3),M(:,1),M(:,4),M(:,1),M(:,6),LineWidth=1);
 refline(0,0)
-xlabel('t');
-ylabel('qpos');
-subplot(6,1,2);
-plot(M(:,1),M(:,3),LineWidth=2);
-refline(0,0);
-xlabel('t');
-ylabel('qvel');
-subplot(6,1,3);
-plot(M(:,1),M(:,4),LineWidth=0.2);
-xlabel('t');
-ylabel('right ctrl');
-subplot(6,1,4);
-plot(M(:,1),M(:,5),LineWidth=0.2);
-xlabel('t');
-ylabel('right length');
-subplot(6,1,5);
-plot(M(:,1),M(:,6),LineWidth=0.2);
-xlabel('t');
-ylabel('left ctrl');
-subplot(6,1,6);
-plot(M(:,1),M(:,7),LineWidth=0.2);
-xlabel('t');
-ylabel('left length');
-% M=readmatrix('plot_data.csv');
-% p = plot(M(:,1),M(:,2), M(:,1),M(:,3),LineWidth=2);
-% xlabel('time (seconds)');
-% ylabel('actuator torque');
 % xL = xlim;
 % yL = ylim;
 % line(xL, [0 0]);  %y-axis
