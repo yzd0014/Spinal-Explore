@@ -16,8 +16,8 @@
 
 #include "WriteToFile.h"
 #include "ActuationNeuron.h"
-//#include <Eigen/Eigen>
-//using namespace Eigen;
+#include <Eigen/Eigen>
+using namespace Eigen;
 
 char error[1000];
 
@@ -41,7 +41,7 @@ unsigned int key_s_counter = 0;
 
 bool startLog = false;
 bool startPrinting = false;
-int visualization = 1;
+int visualization = 0;
 bool mlock = true;
 int mCounter = 0;
 
@@ -56,6 +56,7 @@ mjtNum c_theta_bar = 0;
 mjtNum q_bar = 1.3;
 mjtNum l_bar[2];
 
+mjtNum Kv = 0.5, Kl = 0.7;
 ActuationNeuron actuationNeurons[2];
 void SpikingController(const mjModel* m, mjData* d)
 {
@@ -104,23 +105,25 @@ void BaseLineController(const mjModel* m, mjData* d)
 {
     mjtNum dl0 = d->actuator_length[1] - l_bar[0];
     if (dl0 < 0) dl0 = 0;
-    d->ctrl[1] = dl0 * 0.1;
+    d->ctrl[1] = dl0;
     
     mjtNum dl1 = d->actuator_length[2] - l_bar[1];
     if (dl1 < 0) dl1 = 0;
-    d->ctrl[2] = dl1 * 0.1;
+    d->ctrl[2] = dl1;
 
     mjtNum inhibitionCoeff = 0.5;
-    if (d->actuator_velocity[2] > 0) d->ctrl[1] *= inhibitionCoeff;
-    if (d->actuator_velocity[1] > 0) d->ctrl[2] *= inhibitionCoeff;
-   /* if (d->qpos[0] > 0) d->ctrl[1] = d->ctrl[1] * inhibitionCoeff;
-    if (d->qpos[0] < 0) d->ctrl[2] = d->ctrl[2] * inhibitionCoeff;*/
+    if (d->actuator_velocity[2] > 0) d->ctrl[1] *= Kv;
+    if (d->actuator_velocity[1] > 0) d->ctrl[2] *= Kv;
+   
+    mjtNum inhibitionCoeff2 = 0.7;
+    if (d->qpos[0] > 0) d->ctrl[1] *= Kl;
+    if (d->qpos[0] < 0) d->ctrl[2] *= Kl;
     
     //fs << d->time << ", " << d->qpos[0] << ", " << d->qvel[0] << ", " << d->act[0] << ", " << d->actuator_length[1] << ", " << d->act[1] << ", " << d->actuator_length[2] << "\n";
     mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
     mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
     mjtNum netTorque = torque0 + torque1;
-    if (startPrinting) std::cout << netTorque << std::endl;
+    if (startPrinting) std::cout << d->time << ", " << d->qvel[0] << ", " << d->qpos[0] << std::endl;
 }
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
@@ -329,19 +332,21 @@ void InitializeController(const mjModel* m, mjData* d)
 
 int main(void)
 { 
+    std::cout << "Do you want to have visualization (0 for no, 1 for yes): ";
+    std::cin >> visualization;
     fs.open("../matlab/plot.csv", std::ios::out | std::ios::app);
+    // load model from file and check for errors
+    m = mj_loadXML("muscle_control_narrow.xml", NULL, error, 1000);
+    //m = mj_loadXML("muscle_control.xml", NULL, error, 1000);
+    //m = mj_loadXML("testbench.xml", NULL, error, 1000);
+    if (!m)
+    {
+        printf("%s\n", error);
+        return 1;
+    }
+
     if (visualization == 1)
     {
-        // load model from file and check for errors
-        m = mj_loadXML("muscle_control_narrow.xml", NULL, error, 1000);
-        //m = mj_loadXML("muscle_control.xml", NULL, error, 1000);
-        //m = mj_loadXML("testbench.xml", NULL, error, 1000);
-        if (!m)
-        {
-            printf("%s\n", error);
-            return 1;
-        }
-
         // make data corresponding to model
         d = mj_makeData(m);
 
@@ -390,8 +395,15 @@ int main(void)
                 //  Otherwise add a cpu timer and exit this loop when it is time to render.
                 mjtNum simstart = d->time;
                 while (d->time - simstart < 1.0 / 60.0)
-                    mj_step(m, d);
-
+                {
+                    //if (abs(d->qpos[0]) < 0.01 && abs(d->qvel[0]) < 0.001) break;
+                    mj_step(m, d);  
+                }
+               /* if (abs(d->qpos[0]) < 0.01 && abs(d->qvel[0]) < 0.001)
+                {
+                    std::cout << d->time;
+                    break;
+                }*/
                 next_step = false;
             }
             // get framebuffer viewport
@@ -415,65 +427,40 @@ int main(void)
         mjr_freeContext(&con);
 
         mj_deleteData(d);
-        mj_deleteModel(m);
     }
     else if (visualization == 0)
     {
-        mlock = true;
-        int totalSimTicks = 80000;
-        mjtNum act0_ctrl = -1.41;
-        
-        while (mlock)
+        mjtNum gridStep = 0.02;
+        for (Kv = 0; Kv <= 1 + 0.1 * gridStep; Kv += gridStep)
         {
-            //global varaible initialization
-            mCounter = 0;
-            l_bar[0] = 0;
-            l_bar[1] = 0;
-
-            // load model from file and check for errors
-            m = mj_loadXML("muscle_control.xml", NULL, error, 1000);
-            if (!m)
+            for (Kl = 0; Kl <= 1 + 0.1 * gridStep; Kl += gridStep)
             {
-                printf("%s\n", error);
-                return 1;
-            }
-
-            // make data corresponding to model
-            d = mj_makeData(m);
-            {
-                mjcb_control = SpikingController;
-                if (act0_ctrl >= 1.0)
+                d = mj_makeData(m);
+                InitializeController(m, d);
+                while (d->time <= 10)
                 {
-                    mlock = false;
+                    mj_step(m, d);
+                    if (abs(d->qpos[0]) < 0.01 && abs(d->qvel[0]) < 0.001) break;
                 }
-                d->ctrl[0] = act0_ctrl;
-                act0_ctrl += 0.01;
+                //Vector3d currVec(0.2 * d->qpos[0], 0.2 * d->qvel[0], 0.6 * d->time);
+                //mjtNum err = currVec.norm();
+                fs << d->time;
+                if (Kl + gridStep <= 1 + 0.1 * gridStep) fs << ", ";
+                
+                mj_deleteData(d);
+                d = nullptr;
+                mjcb_control = 0;
             }
-            mj_forward(m, d);
-
-            while (mCounter <= totalSimTicks)
-            {
-                mj_step(m, d);
-                mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
-                mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
-                mjtNum netTorque = torque0 + torque1;
-                mCounter++;
-                if (mCounter == totalSimTicks)
-                {
-                    std::cout << d->actuator_force[1] << std::endl;
-                    fs << d->qpos[0] << ", " << torque0 << ", " << torque1 << ", " << netTorque << "\n";
-                }
-            }
-            mj_deleteData(d);
-            mj_deleteModel(m);
-            mjcb_control = 0;
+            mCounter++;
+            std::cout << mCounter << " row finised..." << std::endl;
+            fs << "\n";
         }
     }
     else
     {
         std::cout << "please select correct visualization mode to run!" << std::endl;
     }
-    
+    mj_deleteModel(m);
     fs.close();
     return 0;
 }

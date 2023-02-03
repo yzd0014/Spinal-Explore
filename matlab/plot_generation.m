@@ -59,9 +59,10 @@ clear;
 % ylabel('left length');
 
 
-M=readmatrix('plot.csv');
-p = plot(M(:,1),M(:,2), M(:,1),M(:,3),M(:,1),M(:,4),M(:,1),M(:,6),LineWidth=1);
-refline(0,0)
+% M=readmatrix('plot.csv');
+% p = plot(M(:,1),M(:,2), M(:,1),M(:,3),M(:,1),M(:,4),M(:,1),M(:,6),LineWidth=1);
+% refline(0,0)
+
 % xL = xlim;
 % yL = ylim;
 % line(xL, [0 0]);  %y-axis
@@ -76,3 +77,12 @@ refline(0,0)
 % %xlim([0.98 1.04]);
 % xlabel('time (seconds)');
 % ylabel('filtered value');
+
+clear;
+x = 0:0.02:1;
+y = 0:0.02:1;
+[X, Y] = meshgrid(x,y);
+F = readmatrix('plot.csv');
+surf(X,Y,F);
+xlabel('Kl(X)');
+ylabel('Kv(Y)')
