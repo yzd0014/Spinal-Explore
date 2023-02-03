@@ -45,8 +45,6 @@ int visualization = 0;
 bool mlock = true;
 int mCounter = 0;
 
-mjtNum dt = 0.0000001;//sub-timestep size
-mjtNum remainingTimeFromeLastStep = 0;
 //event controller parameters
 mjtNum dTheta = 0;
 mjtNum c_a[2];
@@ -60,46 +58,16 @@ mjtNum Kv = 0.5, Kl = 0.7;
 ActuationNeuron actuationNeurons[2];
 void SpikingController(const mjModel* m, mjData* d)
 {
-    /*dTheta = c_Kp * (c_theta_bar - d->qpos[0]);
+    dTheta = c_Kp * (c_theta_bar - d->qpos[0]);
     for (int i = 0; i < 2; i++)
     {
         actuationNeurons[i].thresholdLength = c_a[i] * dTheta + c_b;
-    }*/
-    
-    d->ctrl[1] = 0;
-    d->ctrl[2] = 0;
-    actuationNeurons[0].thresholdReached = false;//reset for each timesetp, it will be updated in the following sub-timesteps
-    actuationNeurons[1].thresholdReached = false;
-
-    mjtNum timeSimulatedInCurrentStep = 0;
-    if (remainingTimeFromeLastStep > 0)
-    {
-        //simulation
-        actuationNeurons[0].Update(remainingTimeFromeLastStep, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
-        actuationNeurons[1].Update(remainingTimeFromeLastStep, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
-        timeSimulatedInCurrentStep += remainingTimeFromeLastStep;
     }
     
-    while (1)
-    {
-        if (timeSimulatedInCurrentStep + dt >= m->opt.timestep)
-        {
-            mjtNum lastDt = m->opt.timestep - timeSimulatedInCurrentStep;
-            remainingTimeFromeLastStep = timeSimulatedInCurrentStep + dt - m->opt.timestep;
-            //simulation
-            actuationNeurons[0].Update(lastDt, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
-            actuationNeurons[1].Update(lastDt, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
-            break;
-        }
-        //simualtion
-        actuationNeurons[0].Update(dt, d->time + timeSimulatedInCurrentStep, d->ctrl[1]);
-        actuationNeurons[1].Update(dt, d->time + timeSimulatedInCurrentStep, d->ctrl[2]);
-        timeSimulatedInCurrentStep += dt;
-        if (startLog) fs << d->time << ", " << actuationNeurons[1].input1Accum << ", " << actuationNeurons[1].input2Accum << "\n";
-    }
-    if (d->qpos[0] > 0) d->ctrl[1] = 0;
-    if (d->qpos[0] < 0) d->ctrl[2] = 0;
-    fs << d->time << ", " << d->qpos[0] << ", " << d->qvel[0] << ", " << d->act[0] << ", " << actuationNeurons[0].input2 << ", " << d->act[1] << ", " << actuationNeurons[1].input2 << "\n";
+    d->ctrl[1] = actuationNeurons[0].Update();
+    d->ctrl[2] = actuationNeurons[1].Update();
+    //std::cout << actuationNeurons[0].output_f << std::endl;
+    //fs << d->time << ", " << d->qpos[0] << ", " << d->qvel[0] << ", " << d->act[0] << ", " << actuationNeurons[0].input2 << ", " << d->act[1] << ", " << actuationNeurons[1].input2 << "\n";
 }
 void BaseLineController(const mjModel* m, mjData* d)
 {
@@ -307,8 +275,8 @@ void InitializeController(const mjModel* m, mjData* d)
         mCounter = 0;
 
         mjcb_control = SpikingController;
-        l_bar[0] = 0.5;
-        l_bar[1] = 0.5;
+        l_bar[0] = 0.4;
+        l_bar[1] = 0.4;
 
         c_theta_bar = 0;
         c_b = d->ten_length[0];
@@ -318,7 +286,7 @@ void InitializeController(const mjModel* m, mjData* d)
         //d->ctrl[0] = -1.41;
         //d->ctrl[0] = 0;
         //d->qpos[0] = 0.3;
-        d->qvel[0] = 0.5;
+        //d->qvel[0] = 0.5;
 
         d->userdata[0] = -10;
         d->userdata[1] = 10;
@@ -337,8 +305,7 @@ int main(void)
     fs.open("../matlab/plot.csv", std::ios::out | std::ios::app);
     // load model from file and check for errors
     m = mj_loadXML("muscle_control_narrow.xml", NULL, error, 1000);
-    //m = mj_loadXML("muscle_control.xml", NULL, error, 1000);
-    //m = mj_loadXML("testbench.xml", NULL, error, 1000);
+    //m = mj_loadXML("muscle_default.xml", NULL, error, 1000);
     if (!m)
     {
         printf("%s\n", error);

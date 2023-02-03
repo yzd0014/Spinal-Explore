@@ -15,32 +15,47 @@ public:
 	{
 		a = 200 / 0.4 * freqMultiplier;
 	}
-	void Update(mjtNum dt, mjtNum currSimtime, mjtNum &output)
+	mjtNum Update()
 	{
+		mjtNum neuronOutput = 0;
+		thresholdReached = false;
+
 		threshold_f = a * thresholdLength;
 		input1 = 0;
-		if (threshold_f > 0.0000001 && currSimtime - input1TimeStamp > 1 / threshold_f)
+		if (threshold_f > 0.0000001)
 		{
-			input1TimeStamp = currSimtime;
-			input1 = 1;
+			mjtNum threshold_period = 1 / threshold_f;
+			if (d->time - input1TimeStamp > threshold_period)
+			{
+				input1TimeStamp += threshold_period;
+				input1 = 1;
+			}
 		}
 		input1Accum += input1;
 
 		curr_f = a * d->actuator_length[actuatorId];
 		input2 = 0;
-		if (curr_f > 0.0000001 && currSimtime - input2TimeStamp > 1 / curr_f)
+		if (curr_f > 0.0000001)
 		{
-			input2TimeStamp = currSimtime;
-			input2 = 1;
+			mjtNum curr_period = 1 / curr_f;
+			if (d->time - input2TimeStamp > curr_period)
+			{
+				input2TimeStamp += curr_period;
+				input2 = 1;
+			}
 		}
 		input2Accum += input2;
 
 		input3 = 0;
 		mjtNum w = inhibitoryCoeff * a * d->actuator_length[input3Id];
-		if (w > 0.0000001 && currSimtime - input3TimeStamp > 1 / w)
+		if (w > 0.0000001)
 		{
-			input3TimeStamp = currSimtime;
-			input3 = 1;
+			mjtNum T = 1 / w;
+			if (d->time - input3TimeStamp > T)
+			{
+				input3TimeStamp += T;
+				input3 = 1;
+			}
 		}
 		
 		inputsIntegrateResult += input2 - input1 - input3;
@@ -48,10 +63,10 @@ public:
 		{
 			inputsIntegrateResult = 0;
 		}
-		output_period += dt;
+		output_period += m->opt.timestep;
 		if (inputsIntegrateResult > freqMultiplier)
 		{
-			output = 1;
+			neuronOutput = 1;
 			potential = inputsIntegrateResult;
 			inputsIntegrateResult = 0;
 			output_f = 1 / output_period;
@@ -61,6 +76,8 @@ public:
 			input1Accum = 0;
 			input2Accum = 0;
 		}
+		
+		return neuronOutput;
 	}
 	mjtNum curr_f = 0;
 	mjtNum threshold_f = 0;
