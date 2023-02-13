@@ -79,13 +79,19 @@ void BaseLineController(const mjModel* m, mjData* d)
     if (dl1 < 0) dl1 = 0;
     d->ctrl[2] = dl1;
 
-    mjtNum inhibitionCoeff = 0.5;
+   /* mjtNum inhibitionCoeff = 0.5;
     if (d->actuator_velocity[2] > 0) d->ctrl[1] *= Kv;
     if (d->actuator_velocity[1] > 0) d->ctrl[2] *= Kv;
    
     mjtNum inhibitionCoeff2 = 0.7;
     if (d->qpos[0] > 0) d->ctrl[1] *= Kl;
-    if (d->qpos[0] < 0) d->ctrl[2] *= Kl;
+    if (d->qpos[0] < 0) d->ctrl[2] *= Kl;*/
+
+    mjtNum inhibitionCoeff = 0;
+    if (d->actuator_velocity[2] > 0 && d->qpos[0] > 0) d->ctrl[1] *= inhibitionCoeff;
+    if (d->actuator_velocity[1] > 0 && d->qpos[0] < 0) d->ctrl[2] *= inhibitionCoeff;
+    /*if (d->actuator_velocity[2] > 0) d->ctrl[1] *= inhibitionCoeff;
+    if (d->actuator_velocity[1] > 0) d->ctrl[2] *= inhibitionCoeff;*/
     
     //fs << d->time << ", " << d->qpos[0] << ", " << d->qvel[0] << ", " << d->act[0] << ", " << d->actuator_length[1] << ", " << d->act[1] << ", " << d->actuator_length[2] << "\n";
     mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
