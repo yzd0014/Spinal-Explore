@@ -78,11 +78,17 @@ clear;
 % xlabel('time (seconds)');
 % ylabel('filtered value');
 
+% clear;
+% x = 0:0.02:1;
+% y = 0:0.02:1;
+% [X, Y] = meshgrid(x,y);
+% F = readmatrix('plot.csv');
+% surf(X,Y,F);
+% xlabel('Kl(X)');
+% ylabel('Kv(Y)');
+
 clear;
-x = 0:0.02:1;
-y = 0:0.02:1;
-[X, Y] = meshgrid(x,y);
-F = readmatrix('plot.csv');
-surf(X,Y,F);
-xlabel('Kl(X)');
-ylabel('Kv(Y)')
+M=readmatrix('plot.csv');
+plot(M(:,1),M(:,2),M(:,1),M(:,3),LineWidth=1);
+refline(0,0);
+legend('pos','sum');
