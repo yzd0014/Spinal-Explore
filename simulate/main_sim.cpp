@@ -79,12 +79,12 @@ void BaseLineController(const mjModel* m, mjData* d)
     if (dl1 < 0) dl1 = 0;
     d->ctrl[2] = dl1;
 
-    mjtNum inhibitionCoeff = 0;
+    mjtNum inhibitionCoeff = 1;
     //fs << d->time << ", " << d->qpos[0] << ", " << diff << "\n";
-   /* if (d->actuator_velocity[2] > 0 && d->qpos[0] > 0) d->ctrl[1] *= inhibitionCoeff;
+    /*if (d->actuator_velocity[2] > 0 && d->qpos[0] > 0) d->ctrl[1] *= inhibitionCoeff;
     if (d->actuator_velocity[1] > 0 && d->qpos[0] < 0) d->ctrl[2] *= inhibitionCoeff;*/
 
-    mjtNum l_sum = d->actuator_velocity[2] + d->actuator_length[2];
+    mjtNum l_sum = d->actuator_velocity[2] + d->actuator_length[2] + 0.1;
     mjtNum r_sum = d->actuator_velocity[1] + d->actuator_length[1];
     mjtNum l_diff = l_sum - r_sum;
     mjtNum r_diff = -l_diff;
@@ -133,7 +133,8 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
 
     if (act == GLFW_PRESS && key == GLFW_KEY_D)
     {
-        c_theta_bar += 0.05;
+        //c_theta_bar += 0.05;
+        d->qvel[0] = 3;
     }
     if (act == GLFW_PRESS && key == GLFW_KEY_A)
     {
@@ -271,8 +272,8 @@ void InitializeController(const mjModel* m, mjData* d)
         mjcb_control = BaseLineController;
         
         l_bar[0] = 0.55;
-        l_bar[1] = 0.55;
-        d->qvel[0] = 3;
+        l_bar[1] = 0.45;
+        d->qvel[0] = 0;
     }
     else if (mode == 2)
     {
