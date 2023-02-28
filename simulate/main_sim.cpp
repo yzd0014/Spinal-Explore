@@ -71,23 +71,26 @@ void SpikingController(const mjModel* m, mjData* d)
 }
 void BaseLineController(const mjModel* m, mjData* d)
 {
-    mjtNum dl0 = d->actuator_length[1] - l_bar[0];
+    mjtNum kd = 0;
+    mjtNum dl0 = kd * d->actuator_velocity[1] + d->actuator_length[1] - l_bar[0];
     if (dl0 < 0) dl0 = 0;
     d->ctrl[1] = dl0;
     
-    mjtNum dl1 = d->actuator_length[2] - l_bar[1];
+    mjtNum dl1 = kd * d->actuator_velocity[2] + d->actuator_length[2] - l_bar[1];
+    //std::cout << d->actuator_velocity[2] << ", " << d->actuator_length[2] << std::endl;
     if (dl1 < 0) dl1 = 0;
     d->ctrl[2] = dl1;
 
-    mjtNum inhibitionCoeff = 1;
+    mjtNum inhibitionCoeff = 0;
     //fs << d->time << ", " << d->qpos[0] << ", " << diff << "\n";
     /*if (d->actuator_velocity[2] > 0 && d->qpos[0] > 0) d->ctrl[1] *= inhibitionCoeff;
     if (d->actuator_velocity[1] > 0 && d->qpos[0] < 0) d->ctrl[2] *= inhibitionCoeff;*/
-
-    mjtNum l_sum = d->actuator_velocity[2] + d->actuator_length[2] + 0.1;
-    mjtNum r_sum = d->actuator_velocity[1] + d->actuator_length[1];
+ 
+    kd = 1;
+    mjtNum l_sum = kd * d->actuator_velocity[2] + d->actuator_length[2] + l_bar[0] - l_bar[1];
+    mjtNum r_sum = kd * d->actuator_velocity[1] + d->actuator_length[1];
     mjtNum l_diff = l_sum - r_sum;
-    mjtNum r_diff = -l_diff;
+    mjtNum r_diff = r_sum - l_sum;
     if (l_diff > 0) d->ctrl[1] *= inhibitionCoeff;
     if (r_diff > 0) d->ctrl[2] *= inhibitionCoeff;
     
@@ -135,10 +138,12 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
     {
         //c_theta_bar += 0.05;
         d->qvel[0] = 3;
+
     }
     if (act == GLFW_PRESS && key == GLFW_KEY_A)
     {
-       c_theta_bar -= 0.05;
+       //c_theta_bar -= 0.05;
+        l_bar[1] -= 0.01;
     }
 }
 
@@ -272,7 +277,7 @@ void InitializeController(const mjModel* m, mjData* d)
         mjcb_control = BaseLineController;
         
         l_bar[0] = 0.55;
-        l_bar[1] = 0.45;
+        l_bar[1] = 0.55;
         d->qvel[0] = 0;
     }
     else if (mode == 2)
