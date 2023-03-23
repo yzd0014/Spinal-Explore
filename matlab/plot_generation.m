@@ -89,6 +89,7 @@ clear;
 
 clear;
 M=readmatrix('plot.csv');
-plot(M(:,1),M(:,2),M(:,1),M(:,3),LineWidth=1);
+plot(M(:,1),M(:,2),M(:,1),M(:,3),M(:,1),M(:,4),LineWidth=1);
+%plot(M(:,1),M(:,2),M(:,1),M(:,3),M(:,1),M(:,4),M(:,1),M(:,5),LineWidth=1);
 refline(0,0);
-legend('pos','sum');
+legend('velocity+length','velocity','length');

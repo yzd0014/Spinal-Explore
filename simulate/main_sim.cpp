@@ -35,7 +35,7 @@ bool button_right = false;
 double lastx = 0;
 double lasty = 0;
 
-bool start_sim = false;
+bool start_sim = true;
 bool next_step = false;
 unsigned int key_s_counter = 0;
 
@@ -87,18 +87,22 @@ void BaseLineController(const mjModel* m, mjData* d)
     if (d->actuator_velocity[1] > 0 && d->qpos[0] < 0) d->ctrl[2] *= inhibitionCoeff;*/
  
     kd = 1;
-    mjtNum l_sum = kd * d->actuator_velocity[2] + d->actuator_length[2] + l_bar[0] - l_bar[1];
-    mjtNum r_sum = kd * d->actuator_velocity[1] + d->actuator_length[1];
-    mjtNum l_diff = l_sum - r_sum;
-    mjtNum r_diff = r_sum - l_sum;
-    if (l_diff > 0) d->ctrl[1] *= inhibitionCoeff;
-    if (r_diff > 0) d->ctrl[2] *= inhibitionCoeff;
+    {
+        mjtNum l_spindle = kd * d->actuator_velocity[2] + d->actuator_length[2];
+        mjtNum r_spindle = kd * d->actuator_velocity[1] + d->actuator_length[1];
+        
+        mjtNum l_sum = l_spindle + l_bar[0] - l_bar[1];
+        mjtNum r_sum = r_spindle;
+        mjtNum l_diff = l_sum - r_sum;
+        mjtNum r_diff = r_sum - l_sum;
+        if (l_diff > 0) d->ctrl[1] *= inhibitionCoeff;
+        if (r_diff > 0) d->ctrl[2] *= inhibitionCoeff;
+        //if (startLog) fs << d->time << ", " << l_spindle << ", " << d->actuator_velocity[2] << ", " << d->actuator_length[2] << "\n";
+    }
     
-    //fs << d->time << ", " << d->qpos[0] << ", " << d->qvel[0] << ", " << d->act[0] << ", " << d->actuator_length[1] << ", " << d->act[1] << ", " << d->actuator_length[2] << "\n";
     mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
     mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
     mjtNum netTorque = torque0 + torque1;
-    if (startPrinting) std::cout << d->time << ", " << d->qvel[0] << ", " << d->qpos[0] << std::endl;
 }
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
@@ -137,7 +141,7 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
     if (act == GLFW_PRESS && key == GLFW_KEY_D)
     {
         //c_theta_bar += 0.05;
-        d->qvel[0] = 3;
+        d->qvel[0] = 1;
 
     }
     if (act == GLFW_PRESS && key == GLFW_KEY_A)
@@ -306,6 +310,7 @@ void InitializeController(const mjModel* m, mjData* d)
         actuationNeurons[1] = ActuationNeuron(m, d, l_bar[1], 2, 1);
     }
     mj_forward(m, d);
+    //startLog = true;
 }
 
 int main(void)
