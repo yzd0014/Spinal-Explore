@@ -15,11 +15,12 @@
 #include "array_safety.h"
 
 #include "WriteToFile.h"
-#include "ActuationNeuron.h"
+#include "Neuron.h"
 #include <Eigen/Eigen>
 using namespace Eigen;
 
 char error[1000];
+int mode = 3;
 
 mjModel* m = NULL;                  // MuJoCo model
 mjData* d = NULL;                   // MuJoCo data
@@ -35,7 +36,7 @@ bool button_right = false;
 double lastx = 0;
 double lasty = 0;
 
-bool start_sim = true;
+bool start_sim = false;
 bool next_step = false;
 unsigned int key_s_counter = 0;
 
@@ -90,6 +91,7 @@ void BaseLineController(const mjModel* m, mjData* d)
     {
         mjtNum l_spindle = kd * d->actuator_velocity[2] + d->actuator_length[2];
         mjtNum r_spindle = kd * d->actuator_velocity[1] + d->actuator_length[1];
+        std::cout << r_spindle << "\n";
         
         mjtNum l_sum = l_spindle + l_bar[0] - l_bar[1];
         mjtNum r_sum = r_spindle;
@@ -103,6 +105,18 @@ void BaseLineController(const mjModel* m, mjData* d)
     mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
     mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
     mjtNum netTorque = torque0 + torque1;
+}
+
+void RateContorller(const mjModel* m, mjData* d)
+{
+    NeuronRateModel::rates[2] = d->actuator_length[1];
+    NeuronRateModel::rates[3] = d->actuator_length[2];
+    NeuronRateModel::rates[4] = l_bar[0];
+    NeuronRateModel::rates[5] = l_bar[1];
+
+    NeuronRateModel::UpdateRates();
+    d->ctrl[1] = NeuronRateModel::rates[0];
+    d->ctrl[2] = NeuronRateModel::rates[1];
 }
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
@@ -140,14 +154,28 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
 
     if (act == GLFW_PRESS && key == GLFW_KEY_D)
     {
-        //c_theta_bar += 0.05;
-        d->qvel[0] = 1;
+        if (mode == 3)
+        {
+            
+        }
+        else
+        {
+            //c_theta_bar += 0.05;
+            d->qvel[0] = 1;
+        }
 
     }
     if (act == GLFW_PRESS && key == GLFW_KEY_A)
     {
-       //c_theta_bar -= 0.05;
-        l_bar[1] -= 0.01;
+        if (mode == 3)
+        {
+
+        }
+        else
+        {
+            //c_theta_bar -= 0.05;
+            l_bar[1] -= 0.01;
+        }  
     }
 }
 
@@ -272,7 +300,6 @@ mjtNum ComputeController(mjtNum maxTheta, mjtNum length0, mjtNum lengthMin)
 void InitializeController(const mjModel* m, mjData* d)
 {
     mj_forward(m, d);
-    int mode = 1;
     if (mode == 0) {
         mjcb_control = AngleController;
     }
@@ -282,7 +309,7 @@ void InitializeController(const mjModel* m, mjData* d)
         
         l_bar[0] = 0.55;
         l_bar[1] = 0.55;
-        d->qvel[0] = 0;
+        d->qvel[0] = 2;
     }
     else if (mode == 2)
     {
@@ -308,6 +335,59 @@ void InitializeController(const mjModel* m, mjData* d)
 
         actuationNeurons[0] = ActuationNeuron(m, d, l_bar[0], 1, 2);
         actuationNeurons[1] = ActuationNeuron(m, d, l_bar[1], 2, 1);
+    }
+    else if (mode == 3)
+    {
+        l_bar[0] = 0.45;
+        l_bar[1] = 0.5;
+
+        int neuronNum = 6;
+        NeuronRateModel::rates.resize(neuronNum);
+        NeuronRateModel::sum_old.resize(neuronNum);
+        NeuronRateModel::positive_sum_old.resize(neuronNum);
+        NeuronRateModel::neighbors.resize(neuronNum);
+        NeuronRateModel::inputWeights.resize(neuronNum);
+        NeuronRateModel::inputSigns.resize(neuronNum);
+        for (int i = 0; i < neuronNum; i++)
+        {
+            NeuronRateModel::rates[i] = 0;
+            NeuronRateModel::sum_old[i] = 0;
+            NeuronRateModel::positive_sum_old[i] = 0;
+        }
+
+        ////initialize neuron 0
+        //NeuronRateModel::neighbors[0].push_back(2);
+        //NeuronRateModel::inputWeights[0].push_back(1);
+        //NeuronRateModel::inputSigns[0].push_back(1);
+        //NeuronRateModel::neighbors[0].push_back(1);
+        //NeuronRateModel::inputWeights[0].push_back(0.8);
+        //NeuronRateModel::inputSigns[0].push_back(-1);
+
+        ////initialize neuron 1
+        //NeuronRateModel::neighbors[1].push_back(3);
+        //NeuronRateModel::inputWeights[1].push_back(1);
+        //NeuronRateModel::inputSigns[1].push_back(1);
+        //NeuronRateModel::neighbors[1].push_back(0);
+        //NeuronRateModel::inputWeights[1].push_back(0.8);
+        //NeuronRateModel::inputSigns[1].push_back(-1);
+
+        //initialize neuron 0
+        NeuronRateModel::neighbors[0].push_back(2);
+        NeuronRateModel::inputWeights[0].push_back(1);
+        NeuronRateModel::inputSigns[0].push_back(1);
+        NeuronRateModel::neighbors[0].push_back(4);
+        NeuronRateModel::inputWeights[0].push_back(1);
+        NeuronRateModel::inputSigns[0].push_back(-1);
+
+        //initialize neuron 1
+        NeuronRateModel::neighbors[1].push_back(3);
+        NeuronRateModel::inputWeights[1].push_back(1);
+        NeuronRateModel::inputSigns[1].push_back(1);
+        NeuronRateModel::neighbors[1].push_back(5);
+        NeuronRateModel::inputWeights[1].push_back(1);
+        NeuronRateModel::inputSigns[1].push_back(-1);
+
+        mjcb_control = RateContorller;
     }
     mj_forward(m, d);
     //startLog = true;

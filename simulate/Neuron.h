@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include <mujoco/mujoco.h>
 #include <mujoco/mjxmacro.h>
 
@@ -110,3 +111,15 @@ private:
 	int actuatorId = 0;
 	int input3Id = 0;
 };
+
+namespace NeuronRateModel
+{
+	extern std::vector<mjtNum> rates;
+	extern std::vector<mjtNum> sum_old;
+	extern std::vector<mjtNum> positive_sum_old;
+	extern std::vector<std::vector<mjtNum>> inputWeights;
+	extern std::vector<std::vector<int>> neighbors;
+	extern std::vector<std::vector<int>> inputSigns;
+
+	void UpdateRates();
+}
