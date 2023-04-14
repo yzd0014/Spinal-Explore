@@ -12,11 +12,11 @@ namespace NeuronRateModel
 
 	void UpdateRates()
 	{
-		mjtNum Ka = 0.3;
+		mjtNum Ka = 1;
 		int neuron_num = rates.size();
 		for (int i = 0; i < neuron_num; i++)
 		{
-			if (!neighbors.empty())
+			if (!neighbors[i].empty())
 			{
 				mjtNum X1 = 0;
 				mjtNum X2 = 0;
@@ -24,7 +24,7 @@ namespace NeuronRateModel
 				for (int k = 0; k < neighbors_num; k++)
 				{
 					int j = neighbors[i][k];
-					int w = inputWeights[i][k];
+					mjtNum w = inputWeights[i][k];
 					int s = inputSigns[i][k];
 					X1 += rates[j] * w * s;
 					X2 += rates[j] * w;
