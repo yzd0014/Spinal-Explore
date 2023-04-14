@@ -189,32 +189,44 @@ void SpikingController(const mjModel* m, mjData* d)
 void BaseLineController(const mjModel* m, mjData* d)
 {
     //PD controll
+    mjtNum qError;
     {
         mjtNum kp = 500;
         mjtNum kd = 50;
-        mjtNum q_bar = 0.9;
-        mjtNum cmd = kp * (q_bar - d->qpos[0]) - kd * d->qvel[0];
-        l_bar[0] = std::max(1 - cmd, 0.0);
-        l_bar[1] = std::max(1 + cmd, 0.0);
+        mjtNum q_bar = 0.8 * sin(2 * 3.14 * d->time);
+        qError = q_bar - d->qpos[0];
+        mjtNum cmd = kp * qError - kd * d->qvel[0];
+        if (cmd >= 0)
+        {
+            l_bar[0] = std::max(0.3 - cmd, 0.0);
+            l_bar[1] = 0.3;
+        }
+        else
+        {
+            l_bar[0] = 0.3;
+            l_bar[1] = std::max(0.3 + cmd, 0.0);
+        }
     }
     
     mjtNum kd = 0.03;
     mjtNum l_spindle = kd * d->actuator_velocity[2] + d->actuator_length[2];
     mjtNum r_spindle = kd * d->actuator_velocity[1] + d->actuator_length[1];
-    d->ctrl[1] = std::max(r_spindle - l_bar[0], 0.0);
-    d->ctrl[2] = std::max(l_spindle - l_bar[1], 0.0);
+  
+   /* mjtNum l_diff = std::max(l_spindle - r_spindle + l_bar[0] - l_bar[1], 0.0);
+    mjtNum r_diff = std::max(r_spindle - l_spindle + l_bar[1] - l_bar[0], 0.0);*/
+    mjtNum l_diff = 0;
+    mjtNum r_diff = 0;
 
-    mjtNum l_diff = std::max(l_spindle - r_spindle + l_bar[0] - l_bar[1], 0.0);
-    mjtNum r_diff = std::max(r_spindle - l_spindle + l_bar[1] - l_bar[0], 0.0);
-    d->ctrl[1] = std::max(d->ctrl[1] - l_diff, 0.0);
-    d->ctrl[2] = std::max(d->ctrl[2] - r_diff, 0.0);
-    //if (startLog) fs << d->time << ", " << l_spindle << ", " << d->actuator_velocity[2] << ", " << d->actuator_length[2] << "\n";
+    mjtNum ctrlCoeff = 1.5;
+    d->ctrl[1] = std::max(r_spindle - l_bar[0] - l_diff, 0.0) * ctrlCoeff;
+    d->ctrl[2] = std::max(l_spindle - l_bar[1] - r_diff, 0.0) * ctrlCoeff;
+    fs << d->time << ", " << qError << "\n";
 
     mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
     mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
     mjtNum netTorque = torque0 + torque1;
 
-    std::cout << d->qpos[0] << std::endl;
+    //std::cout << d->qpos[0] << std::endl;
 }
 
 void RateContorller(const mjModel* m, mjData* d)
@@ -237,25 +249,25 @@ void RateContorller(const mjModel* m, mjData* d)
 
 void PDController(const mjModel* m, mjData* d)
 {
-    mjtNum q_bar = 0.9;
+    mjtNum q_bar = 0.8 * sin(2 * 3.14 * d->time);
+    //mjtNum q_bar = 0.8;
     mjtNum Kp = 500;
     mjtNum Kd = 50;
-    mjtNum u = Kp * (q_bar - d->qpos[0]) - Kd * d->qvel[0];
+    mjtNum qError = q_bar - d->qpos[0];
+    mjtNum u = Kp * qError - Kd * d->qvel[0];
 
-    d->ctrl[1] = 0;
-    d->ctrl[2] = 0;
     if (u >= 0)
     {
-        d->ctrl[1] = u;
+        d->ctrl[1] = 0.5 + u;
+        d->ctrl[2] = 0.5;
     }
     else
     {
-        d->ctrl[2] = -u;
+        d->ctrl[1] = 0.5;
+        d->ctrl[2] = 0.5 - u;
     }
-    
-    //d->ctrl[0] = sin(10 * d->time);
-    std::cout << d->qpos[0] << ", " << d->ctrl[1] << ", " << d->ctrl[2] << std::endl;
-
+    //fs << d->time << ", " << qError << "\n";
+    //std::cout << d->qpos[0] << ", " << d->ctrl[1] << ", " << d->ctrl[2] << std::endl;
 }
 
 mjtNum ComputeController(mjtNum maxTheta, mjtNum length0, mjtNum lengthMin)
