@@ -97,16 +97,48 @@ legend('velocity+length','velocity','length');
 clear;
 m0=readmatrix('p0.csv');
 m1=readmatrix('p1.csv');
-m2=readmatrix('p2.csv');
+
+t = m0(1:8000,1);
+e0 = m0(1:8000,2);
+e1 = m1(1:8000,2);
+plot(t,e0,t,e1,LineWidth=1);
+refline(0,0);
+legend('RI + PD','PD only');
+%% 
+clear;
+m0=readmatrix('plot_0.csv');
+m1=readmatrix('plot_1.csv');
+
+t = m0(1:8000,1);
+ref = m0(1:8000,2);
+r1 = m0(1:8000,3);
+r2 = m1(1:8000,2);
+plot(t,ref,t,r1,t,r2,LineWidth=1);
+refline(0,0);
+legend('tracking','RI + PD','PD only');
+
+%% 
+clear;
+m0=readmatrix('t0.csv');
+m1=readmatrix('t1.csv');
 
 t = m0(1:7000,1);
 e0 = m0(1:7000,2);
 e1 = m1(1:7000,2);
-e2 = m2(1:7000,2);
-plot(t,e0,t,e1,t,e2,LineWidth=1);
+plot(t,e0,t,e1,LineWidth=1);
 refline(0,0);
-legend('stretch reflex + interneuron','stretch reflex only','direct PD');
+legend('RI + PD','PD only');
+%% 
+clear;
+m0=readmatrix('d0.csv');
+m1=readmatrix('d1.csv');
 
+t = m0(1:6000,1);
+e0 = m0(1:6000,2);
+e1 = m1(1:6000,2);
+plot(t,e0,t,e1,LineWidth=1);
+refline(0,0);
+legend('RI + PD','PD only');
 
 
 

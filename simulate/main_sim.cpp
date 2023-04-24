@@ -10,6 +10,9 @@
 #include <functional>
 #include <algorithm>
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 #include <mujoco/mujoco.h>
 #include <mujoco/mjxmacro.h>
 #include "simulate.h"
@@ -58,6 +61,11 @@ mjtNum l_bar[2];
 mjtNum Kv = 0.5, Kl = 0.7;
 ActuationNeuron actuationNeurons[2];
 
+//compute length
+mjtNum S = 0.1;
+mjtNum L = 0;
+mjtNum angleOffset = 0;
+
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
 {
@@ -94,9 +102,9 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
 
     if (act == GLFW_PRESS && key == GLFW_KEY_D)
     {
-        if (mode == 3)
+        if (mode == 0 || mode == 1)
         {
-            
+            dTheta += 0.05;
         }
         else
         {
@@ -107,9 +115,9 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
     }
     if (act == GLFW_PRESS && key == GLFW_KEY_A)
     {
-        if (mode == 3)
+        if (mode == 0 || mode == 1)
         {
-
+            dTheta -= 0.05;
         }
         else
         {
@@ -186,47 +194,55 @@ void SpikingController(const mjModel* m, mjData* d)
     //std::cout << actuationNeurons[0].output_f << std::endl;
     //fs << d->time << ", " << d->qpos[0] << ", " << d->qvel[0] << ", " << d->act[0] << ", " << actuationNeurons[0].input2 << ", " << d->act[1] << ", " << actuationNeurons[1].input2 << "\n";
 }
+
+void GetLength(mjtNum i_angle, mjtNum & o_length0, mjtNum & o_length1)
+{
+    mjtNum lSquare0 = S * S + L * L - 2 * S * L * cos(M_PI * 0.5 - i_angle - angleOffset);
+    mjtNum lSquare1 = S * S + L * L - 2 * S * L * cos(M_PI * 0.5 + i_angle - angleOffset);
+    o_length0 = sqrt(lSquare0);
+    o_length1 = sqrt(lSquare1);
+}
+
 void BaseLineController(const mjModel* m, mjData* d)
 {
-    //PD controll
-    mjtNum qError;
-    {
-        mjtNum kp = 500;
-        mjtNum kd = 50;
-        mjtNum q_bar = 0.8 * sin(2 * 3.14 * d->time);
-        qError = q_bar - d->qpos[0];
-        mjtNum cmd = kp * qError - kd * d->qvel[0];
-        if (cmd >= 0)
-        {
-            l_bar[0] = std::max(0.3 - cmd, 0.0);
-            l_bar[1] = 0.3;
-        }
-        else
-        {
-            l_bar[0] = 0.3;
-            l_bar[1] = std::max(0.3 + cmd, 0.0);
-        }
-    }
+    mjtNum Kp = 1;
+    mjtNum l0 = 0;
+    mjtNum l1 = 0;
+    mjtNum freq = 0.5;
+    //dTheta = 0.8 * sin(2 * 3.14 * d->time * freq);
+    dTheta = 0.8;
+    GetLength(dTheta, l0, l1);
+    l0 *= 0.5;
+    l1 *= 0.5;
     
-    mjtNum kd = 0.03;
-    mjtNum l_spindle = kd * d->actuator_velocity[2] + d->actuator_length[2];
-    mjtNum r_spindle = kd * d->actuator_velocity[1] + d->actuator_length[1];
+    mjtNum Kd = 0.05;
+    mjtNum l_spindle = Kd * d->actuator_velocity[2] + Kp * d->actuator_length[2];
+    mjtNum r_spindle = Kd * d->actuator_velocity[1] + Kp * d->actuator_length[1];
   
-   /* mjtNum l_diff = std::max(l_spindle - r_spindle + l_bar[0] - l_bar[1], 0.0);
-    mjtNum r_diff = std::max(r_spindle - l_spindle + l_bar[1] - l_bar[0], 0.0);*/
-    mjtNum l_diff = 0;
-    mjtNum r_diff = 0;
+    mjtNum Ki = 2;
+    mjtNum l_diff = std::max(l_spindle - r_spindle + Ki * (l0 - l1), 0.0);
+    mjtNum r_diff = std::max(r_spindle - l_spindle + Ki * (l1 - l0), 0.0);
+   /* mjtNum l_diff = 0;
+    mjtNum r_diff = 0;*/
 
-    mjtNum ctrlCoeff = 1.5;
-    d->ctrl[1] = std::max(r_spindle - l_bar[0] - l_diff, 0.0) * ctrlCoeff;
-    d->ctrl[2] = std::max(l_spindle - l_bar[1] - r_diff, 0.0) * ctrlCoeff;
-    fs << d->time << ", " << qError << "\n";
+    mjtNum ctrlCoeff = 1;
+    d->ctrl[1] = std::max(r_spindle - Kp * l0 - l_diff, 0.0) * ctrlCoeff;
+    d->ctrl[2] = std::max(l_spindle - Kp * l1 - r_diff, 0.0) * ctrlCoeff;
+    
+    //d->ctrl[0] = 0.4 * sin(2 * 3.14 * d->time * freq);
+    //fs << d->time << ", " << d->qpos[0] << "\n"; 
+    //fs << d->time << ", " << dTheta << ", " << d->qpos[0] << "\n";
 
     mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
     mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
     mjtNum netTorque = torque0 + torque1;
 
     //std::cout << d->qpos[0] << std::endl;
+    //std::cout << d->ctrl[2] << ", " << d->ctrl[1] << ", " << l_diff << ", " << r_diff << ", " << l1 << ", " << l0 << std::endl;
+    mjtNum ml0 = 0;
+    mjtNum ml1 = 0;
+    GetLength(d->qpos[0], ml0, ml1);
+    std::cout << d->qpos[0] << ", " << ml1 << ", " << ml0 << ", " << d->actuator_length[2] << ", " << d->actuator_length[1] << std::endl;
 }
 
 void RateContorller(const mjModel* m, mjData* d)
@@ -249,25 +265,20 @@ void RateContorller(const mjModel* m, mjData* d)
 
 void PDController(const mjModel* m, mjData* d)
 {
-    mjtNum q_bar = 0.8 * sin(2 * 3.14 * d->time);
-    //mjtNum q_bar = 0.8;
-    mjtNum Kp = 500;
-    mjtNum Kd = 50;
-    mjtNum qError = q_bar - d->qpos[0];
-    mjtNum u = Kp * qError - Kd * d->qvel[0];
-
-    if (u >= 0)
-    {
-        d->ctrl[1] = 0.5 + u;
-        d->ctrl[2] = 0.5;
-    }
-    else
-    {
-        d->ctrl[1] = 0.5;
-        d->ctrl[2] = 0.5 - u;
-    }
-    //fs << d->time << ", " << qError << "\n";
-    //std::cout << d->qpos[0] << ", " << d->ctrl[1] << ", " << d->ctrl[2] << std::endl;
+    mjtNum Kp = 1;
+    mjtNum Kd = 0.05;
+    mjtNum l0 = 0;
+    mjtNum l1 = 0;
+    mjtNum freq = 2;
+    //dTheta = 0.8 * sin(2 * 3.14 * d->time * freq);
+    GetLength(dTheta, l0, l1);
+    l0 *= 0.5;
+    l1 *= 0.5;
+    d->ctrl[1] = Kp * (d->actuator_length[1] - l0) + Kd * d->actuator_velocity[1];
+    d->ctrl[2] = Kp * (d->actuator_length[2] - l1) + Kd * d->actuator_velocity[2];
+    
+    //d->ctrl[0] = 0.4 * sin(2 * 3.14 * d->time * freq);
+    fs << d->time << ", " << d->qpos[0] << "\n";
 }
 
 mjtNum ComputeController(mjtNum maxTheta, mjtNum length0, mjtNum lengthMin)
@@ -283,12 +294,22 @@ void InitializeController(const mjModel* m, mjData* d)
     mj_forward(m, d);
     if (mode == 0) {
         mjcb_control = PDController;
-        //d->qpos[0] = 0.5;
+        
+        mjtNum h = 0.6;
+        mjtNum w = 0.06;
+        L = sqrt(h * h + w * w);
+        angleOffset = atan(w / h);
+
+        d->qvel[0] = 2;
     }
     else if (mode == 1)
     {
         mjcb_control = BaseLineController;
         
+        mjtNum h = 0.6;
+        mjtNum w = 0.06;
+        L = sqrt(h * h + w * w);
+        angleOffset = atan(w / h);
         //l_bar[0] = 0.45;
         //l_bar[1] = 0.55;
         //d->qvel[0] = 2;
