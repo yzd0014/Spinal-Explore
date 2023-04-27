@@ -130,13 +130,13 @@ refline(0,0);
 legend('RI + PD','PD only');
 %% 
 clear;
-m0=readmatrix('d0.csv');
-m1=readmatrix('d1.csv');
+m0=readmatrix('swing0.csv');
+m1=readmatrix('swing1.csv');
 
-t = m0(1:6000,1);
-e0 = m0(1:6000,2);
-e1 = m1(1:6000,2);
-plot(t,e0,t,e1,LineWidth=1);
+t = m0(1:13700,1);
+e0 = m0(1:13700,2);
+e1 = m1(1:13700,2);
+plot(t,e0,t,e1,LineWidth=3);
 refline(0,0);
 legend('RI + PD','PD only');
 
