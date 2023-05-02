@@ -40,7 +40,7 @@ bool button_right = false;
 double lastx = 0;
 double lasty = 0;
 
-bool start_sim = false;
+bool start_sim = true;
 bool next_step = false;
 unsigned int key_s_counter = 0;
 
@@ -218,11 +218,11 @@ void BaseLineController(const mjModel* m, mjData* d)
     mjtNum gl0 = 0;
     mjtNum gl1 = 0;
     GetLength(dTheta, gl0, gl1);
-    /*gl0 *= 0.5;
-    gl1 *= 0.5;*/
-    mjtNum mb = 0.8;
-    mjtNum l0 = mb - (Kp * (d->actuator_length[1] - gl0) + Kd * d->actuator_velocity[1]);
-    mjtNum l1 = mb - (Kp * (d->actuator_length[2] - gl1) + Kd * d->actuator_velocity[2]);
+    gl0 *= 0.5;
+    gl1 *= 0.5;
+    mjtNum mb = 0;
+    mjtNum l0 = std::max(mb - (Kp * (d->actuator_length[1] - gl0) + Kd * d->actuator_velocity[1]), 0.0);
+    mjtNum l1 = std::max(mb - (Kp * (d->actuator_length[2] - gl1) + Kd * d->actuator_velocity[2]), 0.0);
 
     /*mjtNum l0 = 0;
     mjtNum l1 = 0;
@@ -254,8 +254,8 @@ void BaseLineController(const mjModel* m, mjData* d)
     //std::cout << d->ctrl[2] << ", " << d->ctrl[1] << ", " << l_diff << ", " << r_diff << ", " << l1 << ", " << l0 << std::endl;
     //fs << d->time << ", " << d->qpos[0] << std::endl;
     //fs << d->time << ", " << dTheta << ", " << d->qpos[0] << "\n";
-    std::cout << gl1 << ", " << gl0 << "\n";
-    std::cout << d->actuator_length[2] << ", " << d->actuator_length[1] << "\n";
+    //std::cout << gl1 << ", " << gl0 << "\n";
+    //std::cout << d->actuator_length[2] << ", " << d->actuator_length[1] << "\n";
     std::cout << l1 << ", " << l0 << "\n\n";
 }
 
