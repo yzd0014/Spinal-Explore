@@ -132,11 +132,12 @@ legend('RI + PD','PD only');
 clear;
 m0=readmatrix('swing0.csv');
 m1=readmatrix('swing1.csv');
-
+m2=readmatrix('swing2.csv');
 t = m0(1:13700,1);
 e0 = m0(1:13700,2);
 e1 = m1(1:13700,2);
-plot(t,e0,t,e1,LineWidth=3);
+e2 = m2(1:13700,2);
+plot(t,e0,t,e1,t,e2,LineWidth=3);
 refline(0,0);
 legend('RI + PD','PD only');
 

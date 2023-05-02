@@ -208,19 +208,28 @@ void BaseLineController(const mjModel* m, mjData* d)
 {
     mjtNum Kp = 1;
     mjtNum Kd = 0.05;
-    mjtNum l0 = 0;
-    mjtNum l1 = 0;
-    mjtNum freq = 0.5;
+    //mjtNum freq = 0.5;
     //dTheta = 0.8 * sin(2 * 3.14 * d->time * freq);
-    if (d->time - t_last > 100)
+    if (d->time - t_last > 3)
     {
         t_last = d->time;
         dTheta *= -1;
     }
+    mjtNum gl0 = 0;
+    mjtNum gl1 = 0;
+    GetLength(dTheta, gl0, gl1);
+    /*gl0 *= 0.5;
+    gl1 *= 0.5;*/
+    mjtNum mb = 0.8;
+    mjtNum l0 = mb - (Kp * (d->actuator_length[1] - gl0) + Kd * d->actuator_velocity[1]);
+    mjtNum l1 = mb - (Kp * (d->actuator_length[2] - gl1) + Kd * d->actuator_velocity[2]);
+
+    /*mjtNum l0 = 0;
+    mjtNum l1 = 0;
     GetLength(dTheta, l0, l1);
-  /*  l0 *= 0.5;
+    l0 *= 0.5;
     l1 *= 0.5;*/
-   
+
     mjtNum l_spindle = Kd * d->actuator_velocity[2] + Kp * d->actuator_length[2];
     mjtNum r_spindle = Kd * d->actuator_velocity[1] + Kp * d->actuator_length[1];
   
@@ -233,10 +242,7 @@ void BaseLineController(const mjModel* m, mjData* d)
     mjtNum ctrlCoeff = 1;
     d->ctrl[1] = std::max(r_spindle - Kp * l0 - l_diff, 0.0) * ctrlCoeff;
     d->ctrl[2] = std::max(l_spindle - Kp * l1 - r_diff, 0.0) * ctrlCoeff;
-    
-    //d->ctrl[0] = 0.4 * sin(2 * 3.14 * d->time * freq);
-   
-    
+      
     mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
     mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
     mjtNum netTorque = torque0 + torque1;
@@ -246,9 +252,11 @@ void BaseLineController(const mjModel* m, mjData* d)
     GetLength(d->qpos[0], ml0, ml1);
     //std::cout << d->qpos[0] << ", " << ml1 << ", " << ml0 << ", " << d->actuator_length[2] << ", " << d->actuator_length[1] << std::endl;
     //std::cout << d->ctrl[2] << ", " << d->ctrl[1] << ", " << l_diff << ", " << r_diff << ", " << l1 << ", " << l0 << std::endl;
-    //fs << d->time << ", " << d->qpos[0] << "\n"; 
+    //fs << d->time << ", " << d->qpos[0] << std::endl;
     //fs << d->time << ", " << dTheta << ", " << d->qpos[0] << "\n";
-    //std::cout << d->time << ", " << d->qpos[0] << "\n";
+    std::cout << gl1 << ", " << gl0 << "\n";
+    std::cout << d->actuator_length[2] << ", " << d->actuator_length[1] << "\n";
+    std::cout << l1 << ", " << l0 << "\n\n";
 }
 
 void RateContorller(const mjModel* m, mjData* d)
