@@ -119,12 +119,12 @@ legend('tracking','RI + PD','PD only');
 
 %% 
 clear;
-m0=readmatrix('t0.csv');
-m1=readmatrix('t1.csv');
+m0=readmatrix('pid1.csv');
+m1=readmatrix('pid2.csv');
 
-t = m0(1:7000,1);
-e0 = m0(1:7000,2);
-e1 = m1(1:7000,2);
+t = m0(1:6000,1);
+e0 = m0(1:6000,2);
+e1 = m1(1:6000,2);
 plot(t,e0,t,e1,LineWidth=1);
 refline(0,0);
 legend('RI + PD','PD only');

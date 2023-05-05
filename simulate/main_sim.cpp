@@ -67,6 +67,16 @@ mjtNum L = 0;
 mjtNum angleOffset = 0;
 
 mjtNum t_last = 0;
+namespace spine
+{
+    mjtNum err0 = 0;
+    mjtNum err1 = 0;
+}
+namespace PD
+{
+    mjtNum err0 = 0;
+    mjtNum err1 = 0;
+}
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
 {
@@ -206,23 +216,26 @@ void GetLength(mjtNum i_angle, mjtNum & o_length0, mjtNum & o_length1)
 
 void BaseLineController(const mjModel* m, mjData* d)
 {
-    mjtNum Kp = 1;
-    mjtNum Kd = 0.05;
+    mjtNum Kp = 50;
+    mjtNum Kd = 8;
+    mjtNum Kii = 8;
     //mjtNum freq = 0.5;
     //dTheta = 0.8 * sin(2 * 3.14 * d->time * freq);
-    if (d->time - t_last > 3)
+   /* if (d->time - t_last > 3)
     {
         t_last = d->time;
         dTheta *= -1;
-    }
+    }*/
     mjtNum gl0 = 0;
     mjtNum gl1 = 0;
     GetLength(dTheta, gl0, gl1);
-    gl0 *= 0.5;
-    gl1 *= 0.5;
-    mjtNum mb = 0;
-    mjtNum l0 = std::max(mb - (Kp * (d->actuator_length[1] - gl0) + Kd * d->actuator_velocity[1]), 0.0);
-    mjtNum l1 = std::max(mb - (Kp * (d->actuator_length[2] - gl1) + Kd * d->actuator_velocity[2]), 0.0);
+    /*gl0 *= 0.5;
+    gl1 *= 0.5;*/
+    spine::err0 += (d->actuator_length[1] - gl0) * m->opt.timestep;
+    spine::err1 += (d->actuator_length[2] - gl1) * m->opt.timestep;
+    mjtNum mb = 0.1;//larger mb results smaller co-contraction
+    mjtNum l0 = std::max(mb - (Kp * (d->actuator_length[1] - gl0) + Kd * d->actuator_velocity[1] + Kii * spine::err0), 0.0);
+    mjtNum l1 = std::max(mb - (Kp * (d->actuator_length[2] - gl1) + Kd * d->actuator_velocity[2] + Kii * spine::err1), 0.0);
 
     /*mjtNum l0 = 0;
     mjtNum l1 = 0;
@@ -230,18 +243,17 @@ void BaseLineController(const mjModel* m, mjData* d)
     l0 *= 0.5;
     l1 *= 0.5;*/
 
-    mjtNum l_spindle = Kd * d->actuator_velocity[2] + Kp * d->actuator_length[2];
-    mjtNum r_spindle = Kd * d->actuator_velocity[1] + Kp * d->actuator_length[1];
+    mjtNum l_spindle = 0.05 * d->actuator_velocity[2] + d->actuator_length[2];
+    mjtNum r_spindle = 0.05 * d->actuator_velocity[1] + d->actuator_length[1];
   
-    mjtNum Ki = 2;
-    mjtNum l_diff = std::max(l_spindle - r_spindle + Ki * (l0 - l1), 0.0);
-    mjtNum r_diff = std::max(r_spindle - l_spindle + Ki * (l1 - l0), 0.0);
+    mjtNum l_diff = std::max(l_spindle - r_spindle + (l0 - l1), 0.0);
+    mjtNum r_diff = std::max(r_spindle - l_spindle + (l1 - l0), 0.0);
    /* mjtNum l_diff = 0;
     mjtNum r_diff = 0;*/
 
     mjtNum ctrlCoeff = 1;
-    d->ctrl[1] = std::max(r_spindle - Kp * l0 - l_diff, 0.0) * ctrlCoeff;
-    d->ctrl[2] = std::max(l_spindle - Kp * l1 - r_diff, 0.0) * ctrlCoeff;
+    d->ctrl[1] = std::max(r_spindle - l0 - l_diff, 0.0) * ctrlCoeff;
+    d->ctrl[2] = std::max(l_spindle - l1 - r_diff, 0.0) * ctrlCoeff;
       
     mjtNum torque0 = d->actuator_force[1] * d->actuator_moment[1];
     mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
@@ -252,11 +264,10 @@ void BaseLineController(const mjModel* m, mjData* d)
     GetLength(d->qpos[0], ml0, ml1);
     //std::cout << d->qpos[0] << ", " << ml1 << ", " << ml0 << ", " << d->actuator_length[2] << ", " << d->actuator_length[1] << std::endl;
     //std::cout << d->ctrl[2] << ", " << d->ctrl[1] << ", " << l_diff << ", " << r_diff << ", " << l1 << ", " << l0 << std::endl;
-    //fs << d->time << ", " << d->qpos[0] << std::endl;
-    //fs << d->time << ", " << dTheta << ", " << d->qpos[0] << "\n";
+    fs << d->time << ", " << d->qpos[0] << std::endl;
     //std::cout << gl1 << ", " << gl0 << "\n";
     //std::cout << d->actuator_length[2] << ", " << d->actuator_length[1] << "\n";
-    std::cout << l1 << ", " << l0 << "\n\n";
+    //std::cout << l1 << ", " << l0 << "\n\n";
 }
 
 void RateContorller(const mjModel* m, mjData* d)
@@ -279,22 +290,27 @@ void RateContorller(const mjModel* m, mjData* d)
 
 void PDController(const mjModel* m, mjData* d)
 {
-    mjtNum Kp = 1;
-    mjtNum Kd = 0.05;
+    mjtNum Kp = 40;
+    mjtNum Ki = 2;
+    mjtNum Kd = 5;
     mjtNum l0 = 0;
     mjtNum l1 = 0;
     mjtNum freq = 2;
     //dTheta = 0.8 * sin(2 * 3.14 * d->time * freq);
-    if (d->time - t_last > 3)
+   /* if (d->time - t_last > 3)
     {
         t_last = d->time;
         dTheta *= -1;
-    }
-    GetLength(dTheta, l0, l1);
-    l0 *= 0.5;
-    l1 *= 0.5;
-    d->ctrl[1] = Kp * (d->actuator_length[1] - l0) + Kd * d->actuator_velocity[1];
-    d->ctrl[2] = Kp * (d->actuator_length[2] - l1) + Kd * d->actuator_velocity[2];
+    }*/
+    GetLength(dTheta, l0, l1); //l0 and l1 decides co-contraction 
+   /* l0 *= 0.5;
+    l1 *= 0.5;*/
+    PD::err0 += (d->actuator_length[1] - l0) * m->opt.timestep;
+    PD::err1 += (d->actuator_length[2] - l1) * m->opt.timestep;
+    mjtNum r_spindle = 0.05 * d->actuator_velocity[1] + d->actuator_length[1];
+    mjtNum l_spindle = 0.05 * d->actuator_velocity[2] + d->actuator_length[2];
+    d->ctrl[1] = Kp * (r_spindle - l0) + Kd * d->actuator_velocity[1] + Ki * PD::err0;
+    d->ctrl[2] = Kp * (l_spindle - l1) + Kd * d->actuator_velocity[2] + Ki * PD::err1;
     
     //d->ctrl[0] = 0.4 * sin(2 * 3.14 * d->time * freq);
     //fs << d->time << ", " << d->qpos[0] << "\n";
@@ -320,7 +336,7 @@ void InitializeController(const mjModel* m, mjData* d)
         angleOffset = atan(w / h);
 
         //d->qvel[0] = 2;
-        dTheta = 0.8;
+        dTheta = 0.7;
     }
     else if (mode == 1)
     {
@@ -333,7 +349,7 @@ void InitializeController(const mjModel* m, mjData* d)
         //l_bar[0] = 0.45;
         //l_bar[1] = 0.55;
         //d->qvel[0] = 2;
-        dTheta = 0.8;
+        dTheta = 0.7;
     }
     else if (mode == 2)
     {
