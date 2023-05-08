@@ -259,9 +259,6 @@ void BaseLineController(const mjModel* m, mjData* d)
     mjtNum torque1 = d->actuator_force[2] * d->actuator_moment[2];
     mjtNum netTorque = torque0 + torque1;
 
-    mjtNum ml0 = 0;
-    mjtNum ml1 = 0;
-    GetLength(d->qpos[0], ml0, ml1);
     //std::cout << d->qpos[0] << ", " << ml1 << ", " << ml0 << ", " << d->actuator_length[2] << ", " << d->actuator_length[1] << std::endl;
     //std::cout << d->ctrl[2] << ", " << d->ctrl[1] << ", " << l_diff << ", " << r_diff << ", " << l1 << ", " << l0 << std::endl;
     fs << d->time << ", " << d->qpos[0] << std::endl;
