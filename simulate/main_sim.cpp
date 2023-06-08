@@ -323,7 +323,7 @@ mjtNum ComputeController(mjtNum maxTheta, mjtNum length0, mjtNum lengthMin)
 void InitializeController(const mjModel* m, mjData* d)
 {
     mode = 1;
-    mj_forward(m, d);
+    mj_forward(m, d);//make sure whatever is defined in xml is available in the following initialization
     if (mode == 0) {
         mjcb_control = PDController;
         
@@ -432,7 +432,7 @@ void InitializeController(const mjModel* m, mjData* d)
 
         mjcb_control = RateContorller;
     }
-    mj_forward(m, d);
+    mj_forward(m, d);//make sure initialization is updated before the starte of simulation
     //startLog = true;
 }
 
